@@ -1,0 +1,11 @@
+severity_score:
+  impact_weight: 0.35
+  confidence_weight: 0.20
+  recurrence_weight: 0.20
+  business_criticality_weight: 0.15
+  mitigation_complexity_weight: -0.10
+priority:
+  P1: "score >= 85"
+  P2: "score >= 65"
+  P3: "score >= 45"
+  P4: "score < 45"

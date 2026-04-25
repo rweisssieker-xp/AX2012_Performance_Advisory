@@ -277,3 +277,143 @@ Index candidates are managed through candidate-review, approval, implementation,
 ## USP 50: Risk-Aware Auto-Triage
 
 Findings are automatically routed to immediate treatment, next maintenance window, observation, accepted risk, or architecture topic.
+
+## USP 51: AX Performance SLOs
+
+AX process and query-family SLOs are checked against budgets and error limits.
+
+## USP 52: Environment Anomaly Detection
+
+Current evidence is compared with trend baselines to flag unusual risk, finding, or workload increases.
+
+## USP 53: Release Gate
+
+Before/after evidence can block or pass a deployment based on regression and high-risk findings.
+
+## USP 54: SQL Plan Regression Watcher
+
+Plan-cache and Query Store evidence is converted into plan-regression candidates.
+
+## USP 55: Custom Code Ownership Graph
+
+Batch jobs, X++ classes, AX tables, and findings are exported as graph nodes and edges.
+
+## USP 56: Cost-of-Delay Model
+
+Open findings receive estimated daily risk cost to support prioritization.
+
+## USP 57: Evidence Quality Grading
+
+Findings receive A-D evidence grades based on direct AX/SQL correlation strength.
+
+## USP 58: Recommendation Scenario Simulator
+
+Findings are expanded into remediation scenarios with benefit and risk profiles.
+
+## USP 59: GxP Compliance Mode Check
+
+Findings are checked for required audit fields such as owner, rollback, and validation criteria.
+
+## USP 60: Evidence Chain of Custody
+
+Evidence directories are hashed into a manifest with file-level SHA-256 digests.
+
+## USP 61: Workload Calendar Mapping
+
+Findings are mapped to business calendar windows such as close, MRP, retail, release, and maintenance.
+
+## USP 62: Capacity Exhaustion Forecast
+
+Growth, latency, and size evidence is turned into exhaustion or threshold forecasts.
+
+## USP 63: AX Data Retention Policy Advisor
+
+Tables receive retention and archive-review recommendations based on table family and closed-record ratio.
+
+## USP 64: Knowledge Base Feedback Loop
+
+Resolved or unresolved findings can be captured as future learning cases.
+
+## USP 65: Multi-Environment Fleet View
+
+Multiple evidence directories can be summarized into one fleet-risk view.
+
+## USP 66: Performance Runbook Generator
+
+Root causes are turned into operational runbooks with validation and remediation steps.
+
+## USP 67: SQL Agent Job Correlation
+
+SQL Agent job evidence can be correlated with AX batch windows.
+
+## USP 68: AOS Topology Advisor
+
+Batch/AOS distribution is reviewed for separation and balancing recommendations.
+
+## USP 69: Archiving Impact Sandbox
+
+Table heatmap risk is recalculated under archive-percentage scenarios.
+
+## USP 70: AI-Assisted Root Cause Narrative
+
+Findings are summarized into a readable cause-and-effect narrative.
+
+## USP 71: Performance Digital Twin
+AX environment topology, query families, hot tables, and business calendar are exported as a digital twin model.
+
+## USP 72: Causal Graph Engine
+Findings, waits, tables, and root causes are represented as a traversable cause-effect graph.
+
+## USP 73: Autonomous Evidence Planner
+Missing evidence is detected and converted into a read-only next-collection plan.
+
+## USP 74: Confidence-Driven Drilldown
+Low and medium confidence findings generate concrete next diagnostic checks.
+
+## USP 75: Performance Contract Testing
+AX process and query budgets are exported as pass/fail contracts.
+
+## USP 76: Query-to-X++ Trace Linking
+SQL query evidence is linked to Trace Parser or DynamicsPerf X++ call-stack evidence when available.
+
+## USP 77: Change Blast Radius Analysis
+Planned changes can be matched against affected findings, modules, and tables.
+
+## USP 78: Temporal Hotspot Map
+SQL and batch pressure is mapped by hour for incident timing analysis.
+
+## USP 79: Performance Debt Interest
+Debt items gain an interest score based on severity, age, and recurrence.
+
+## USP 80: Remediation Portfolio Optimizer
+Candidate actions are ranked by benefit-to-risk ratio.
+
+## USP 81: Validation Automation Orchestrator
+Before/after evidence is compared and validation artifacts are generated.
+
+## USP 82: AX Aging Risk Index
+Legacy risk is scored using high findings, data growth, and SQL 2016 support exposure.
+
+## USP 83: D365 Migration Signal Map
+Findings are classified as tuning, modernization, or data-platform modernization signals.
+
+## USP 84: Human Approval Workflow
+Findings are exported into a state workflow from proposed through validated and closed.
+
+## USP 85: Explainability Score
+Recommendations receive explainability scores derived from evidence quality.
+
+## USP 86: Operator Copilot Context
+Top findings and root causes are packaged for interactive operator Q&A.
+
+## USP 87: Performance Regression Unit Tests
+Findings can be turned into repeatable regression test skeletons.
+
+## USP 88: Sensitive Data Boundary Detector
+Evidence files are scanned for sensitive columns before sharing.
+
+## USP 89: Self-Healing Knowledge Base
+Validated findings can be exported as reusable matching rules.
+
+## USP 90: Cross-Customer Pattern Library
+Findings can be anonymized into reusable pattern records without customer data.

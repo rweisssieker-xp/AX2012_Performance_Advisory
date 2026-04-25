@@ -1,0 +1,6 @@
+collision_signals:
+  same_aos: 2
+  same_batch_group: 3
+  same_table_family: 3
+  overlaps_maintenance: 4
+  exceeds_sla: 5

@@ -1332,6 +1332,522 @@ def executive_risk_narrative(root: str | Path) -> str:
     )
 
 
+def ax_performance_slos(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    slos = evidence.config.get("slos", {
+        "batch_default_seconds": 3600,
+        "query_default_ms": 2000,
+        "high_findings_budget": 5,
+    })
+    rows: list[dict[str, Any]] = []
+    high_count = sum(1 for item in analyze_evidence(root) if item["severity"] in {"high", "critical"})
+    rows.append({"slo": "high-risk-finding-budget", "actual": high_count, "target": slos["high_findings_budget"], "status": "breach" if high_count > slos["high_findings_budget"] else "ok"})
+    for row in evidence.tables["batch_jobs"]:
+        actual = float(row.get("duration_seconds") or 0)
+        target = float(row.get("sla_target_seconds") or slos["batch_default_seconds"])
+        rows.append({"slo": f"batch:{row.get('job_name')}", "actual": actual, "target": target, "status": "breach" if target and actual > target else "ok"})
+    for family in query_families(root)[:20]:
+        avg = family["totalDurationMs"] / max(1, family["executionCount"])
+        target = float(slos["query_default_ms"])
+        rows.append({"slo": f"query-family:{family['object']}:{family['family']}", "actual": round(avg, 2), "target": target, "status": "breach" if avg > target else "ok"})
+    return rows
+
+
+def anomaly_detection(root: str | Path, trend_db: str | Path | None = None) -> list[dict[str, Any]]:
+    findings = analyze_evidence(root)
+    current = {
+        "finding_count": len(findings),
+        "high_count": sum(1 for f in findings if f["severity"] in {"high", "critical"}),
+        "risk_score": sum(SEVERITY_RANK.get(f["severity"], 0) for f in findings),
+    }
+    baseline = {"finding_count": 0, "high_count": 0, "risk_score": 0}
+    if trend_db and Path(trend_db).exists():
+        import sqlite3
+        conn = sqlite3.connect(trend_db)
+        try:
+            rows = conn.execute("SELECT finding_count, high_count FROM runs ORDER BY run_id DESC LIMIT 20").fetchall()
+            if rows:
+                baseline["finding_count"] = statistics.mean(row[0] for row in rows)
+                baseline["high_count"] = statistics.mean(row[1] for row in rows)
+                baseline["risk_score"] = baseline["finding_count"] * 3
+        finally:
+            conn.close()
+    anomalies = []
+    for key, value in current.items():
+        base = baseline[key]
+        if base and value > base * 1.5:
+            anomalies.append({"metric": key, "actual": value, "baseline": round(base, 2), "status": "anomaly", "ratio": round(value / base, 2)})
+        elif not base:
+            anomalies.append({"metric": key, "actual": value, "baseline": None, "status": "baseline-required", "ratio": None})
+    return anomalies
+
+
+def release_gate(before: str | Path, after: str | Path) -> dict[str, Any]:
+    comparison = compare_baseline(before, after)
+    after_findings = analyze_evidence(after)
+    blockers = [f for f in after_findings if f["severity"] in {"critical", "high"}]
+    gate = "fail" if comparison["result"] == "regressed" or len(blockers) > 0 else "pass"
+    return {"gate": gate, "comparison": comparison, "blockerCount": len(blockers), "blockers": blockers[:10]}
+
+
+def plan_regression_watcher(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    rows = []
+    for row in evidence.tables["plan_cache_variance"]:
+        min_ms = float(row.get("min_avg_duration_ms") or 0)
+        max_ms = float(row.get("max_avg_duration_ms") or 0)
+        ratio = (max_ms / min_ms) if min_ms else 0
+        if ratio >= 2 or float(row.get("plan_count") or 0) > 1:
+            rows.append({"queryHash": row.get("query_hash"), "planCount": row.get("plan_count"), "minAvgMs": min_ms, "maxAvgMs": max_ms, "regressionRatio": round(ratio, 2), "recommendation": "Compare plans and validate Query Store runtime before forcing or clearing plans."})
+    for row in evidence.tables["query_store_runtime"]:
+        if float(row.get("avg_duration_ms") or 0) >= 30_000:
+            rows.append({"queryId": row.get("query_id"), "planId": row.get("plan_id"), "avgDurationMs": row.get("avg_duration_ms"), "recommendation": "Review Query Store plan history and baseline against prior intervals."})
+    return rows
+
+
+def custom_code_ownership_graph(root: str | Path) -> dict[str, Any]:
+    evidence = load_evidence(root)
+    nodes: dict[str, dict[str, Any]] = {}
+    edges: list[dict[str, str]] = []
+    def node(name: str, kind: str) -> None:
+        nodes.setdefault(name, {"id": name, "kind": kind})
+    for row in evidence.tables["batch_jobs"] + evidence.tables["batch_tasks"]:
+        job = str(row.get("job_name") or row.get("caption") or row.get("job_id") or row.get("task_id") or "")
+        klass = str(row.get("class_name") or row.get("class_number") or "")
+        if job:
+            node(job, "batch")
+        if klass:
+            node(klass, "xpp-class")
+            edges.append({"from": job, "to": klass, "type": "executes"})
+    for finding in analyze_evidence(root):
+        node(finding["id"], "finding")
+        for table in finding["axContext"].get("tables", []):
+            node(table, "table")
+            edges.append({"from": finding["id"], "to": table, "type": "affects"})
+    return {"nodes": list(nodes.values()), "edges": edges}
+
+
+def cost_of_delay(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    rates = evidence.config.get("costModel", {"userWaitHourCost": 75, "batchDelayHourCost": 250, "highFindingDailyRiskCost": 500})
+    rows = []
+    for finding in analyze_evidence(root):
+        severity_factor = SEVERITY_RANK.get(finding["severity"], 1)
+        daily = severity_factor * float(rates["highFindingDailyRiskCost"])
+        if "batch" in finding["recommendation"].get("playbook", ""):
+            daily += float(rates["batchDelayHourCost"])
+        rows.append({"id": finding["id"], "title": finding["title"], "severity": finding["severity"], "estimatedDailyCost": round(daily, 2), "owner": finding["axContext"].get("technicalOwner")})
+    return rows
+
+
+def evidence_quality_grades(root: str | Path) -> list[dict[str, Any]]:
+    grades = []
+    for finding in analyze_evidence(root):
+        sources = {ev.get("source") for ev in finding.get("evidence", [])}
+        has_ax = bool(finding["axContext"].get("batchJobs") or finding["axContext"].get("classes"))
+        has_sql = bool(finding["sqlContext"].get("queryHash") or finding["sqlContext"].get("waitTypes") or finding["sqlContext"].get("objects"))
+        if has_ax and has_sql:
+            grade = "A"
+            meaning = "direct AX and SQL evidence"
+        elif has_sql and sources:
+            grade = "B"
+            meaning = "direct SQL evidence with inferred AX context"
+        elif sources:
+            grade = "C"
+            meaning = "single-source evidence"
+        else:
+            grade = "D"
+            meaning = "weak heuristic"
+        grades.append({"id": finding["id"], "title": finding["title"], "grade": grade, "meaning": meaning})
+    return grades
+
+
+def recommendation_scenarios(root: str | Path) -> list[dict[str, Any]]:
+    rows = []
+    for finding in analyze_evidence(root)[:50]:
+        playbook = finding["recommendation"].get("playbook", "")
+        options = []
+        if "index" in playbook:
+            options.append({"scenario": "index-review", "benefit": "medium-high", "risk": "medium-high"})
+        if "statistics" in playbook:
+            options.append({"scenario": "targeted-statistics-update", "benefit": "medium", "risk": "low"})
+        if "batch" in playbook:
+            options.append({"scenario": "batch-reschedule", "benefit": "medium", "risk": "low"})
+        if "data-growth" in playbook:
+            options.append({"scenario": "archive-cleanup-assessment", "benefit": "high", "risk": "high"})
+        if not options:
+            options.append({"scenario": "observe-and-collect-delta", "benefit": "low", "risk": "low"})
+        rows.append({"id": finding["id"], "title": finding["title"], "options": options})
+    return rows
+
+
+def compliance_mode_check(root: str | Path) -> list[dict[str, Any]]:
+    required = ["businessOwner", "technicalOwner"]
+    rows = []
+    for finding in analyze_evidence(root):
+        missing = []
+        for field in required:
+            if not finding["axContext"].get(field) or finding["axContext"].get(field) == "Unknown":
+                missing.append(field)
+        if not finding["validation"].get("rollback"):
+            missing.append("rollback")
+        if not finding["validation"].get("successMetric"):
+            missing.append("successMetric")
+        rows.append({"id": finding["id"], "status": "complete" if not missing else "incomplete", "missing": missing})
+    return rows
+
+
+def chain_of_custody(root: str | Path) -> dict[str, Any]:
+    root_path = Path(root)
+    files = []
+    for path in sorted(root_path.rglob("*")):
+        if path.is_file():
+            files.append({"path": str(path.relative_to(root_path)), "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size})
+    manifest = {"createdAt": now_iso(), "root": str(root_path), "fileCount": len(files), "files": files}
+    manifest["manifestSha256"] = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+    return manifest
+
+
+def workload_calendar_map(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    calendar = evidence.metadata.get("businessCalendar", []) or evidence.config.get("businessCalendar", [])
+    rows = []
+    for finding in analyze_evidence(root):
+        rows.append({"id": finding["id"], "title": finding["title"], "matchedWindows": [item.get("name") for item in calendar], "windowCount": len(calendar)})
+    return rows
+
+
+def capacity_exhaustion_forecast(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    rows = []
+    for row in evidence.tables["table_growth"]:
+        growth_pct = float(row.get("growth_pct_30d") or 0)
+        size = float(row.get("size_mb") or 0)
+        if growth_pct > 0:
+            months_to_double = round(100 / growth_pct, 1)
+            rows.append({"resource": row.get("object_name"), "currentSizeMb": size, "growthPct30d": growth_pct, "monthsToDouble": months_to_double})
+    for row in evidence.tables["file_latency"]:
+        reads = float(row.get("num_of_reads") or 0)
+        latency = (float(row.get("io_stall_read_ms") or 0) / reads) if reads else 0
+        if latency >= 15:
+            rows.append({"resource": row.get("file_logical_name"), "avgReadLatencyMs": round(latency, 2), "forecast": "already-above-threshold"})
+    return rows
+
+
+def retention_policy_advisor(root: str | Path) -> list[dict[str, Any]]:
+    policies = []
+    for row in load_evidence(root).tables["table_growth"]:
+        table = str(row.get("object_name") or "")
+        closed = float(row.get("closed_record_pct") or 0)
+        if "BATCH" in object_token(table):
+            retention = "90 days"
+        elif "RETAIL" in object_token(table):
+            retention = "30-180 days depending on audit/reporting"
+        elif closed >= 80:
+            retention = "archive closed records after business/legal approval"
+        else:
+            retention = "monitor"
+        policies.append({"table": table, "closedRecordPct": closed, "proposedRetention": retention, "requiresApproval": True})
+    return policies
+
+
+def knowledge_feedback(root: str | Path, output: str | Path, resolution: str = "unresolved") -> Path:
+    rows = []
+    out = Path(output)
+    if out.exists():
+        rows = read_json(out, [])
+    for finding in analyze_evidence(root):
+        rows.append({"findingId": finding["id"], "title": finding["title"], "playbook": finding["recommendation"].get("playbook"), "resolution": resolution, "capturedAt": now_iso()})
+    write_json(out, rows)
+    return out
+
+
+def fleet_view(evidence_dirs: list[str | Path]) -> list[dict[str, Any]]:
+    rows = []
+    for directory in evidence_dirs:
+        evidence = load_evidence(directory)
+        findings = analyze_evidence(directory)
+        rows.append({
+            "environment": evidence.config.get("environment") or evidence.metadata.get("environment") or str(directory),
+            "evidence": str(directory),
+            "findings": len(findings),
+            "highCritical": sum(1 for f in findings if f["severity"] in {"high", "critical"}),
+            "healthScores": module_health_scores(findings),
+        })
+    return rows
+
+
+def runbook_generator(root: str | Path) -> str:
+    lines = ["# AX Performance Runbook", ""]
+    for cause in summarize_root_causes(analyze_evidence(root))[:12]:
+        lines.extend([
+            f"## {cause['classification']} / {cause['playbook']} / {cause['module']}",
+            "",
+            "1. Confirm the evidence source and time window.",
+            "2. Validate AX owner and affected business process.",
+            "3. Run generated validation scripts where available.",
+            "4. Select low-risk remediation or prepare CAB package.",
+            "5. Re-measure with the same evidence window.",
+            "",
+        ])
+    return "\n".join(lines)
+
+
+def sql_agent_correlation(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    jobs = evidence.tables.get("sql_agent_jobs", [])
+    batch = evidence.tables["batch_jobs"]
+    rows = []
+    for job in jobs:
+        for batch_job in batch:
+            rows.append({"sqlAgentJob": job.get("job_name"), "axBatchJob": batch_job.get("job_name"), "correlation": "requires-time-window-validation"})
+    return rows
+
+
+def aos_topology_advisor(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    by_aos: dict[str, int] = {}
+    for row in evidence.tables["batch_jobs"]:
+        aos = str(row.get("aos") or "unknown")
+        by_aos[aos] = by_aos.get(aos, 0) + 1
+    rows = [{"aos": aos, "batchJobs": count, "recommendation": "consider separating batch/services/user load" if count > 5 or aos == "unknown" else "balanced"} for aos, count in by_aos.items()]
+    if not rows:
+        rows.append({"aos": "unknown", "batchJobs": 0, "recommendation": "collect AOS assignment and counter evidence"})
+    return rows
+
+
+def archiving_impact_sandbox(root: str | Path, archive_percent: float = 50.0) -> list[dict[str, Any]]:
+    rows = []
+    for item in table_heatmap(root):
+        reduction = archive_percent / 100
+        rows.append({"table": item["table"], "currentRiskScore": item["riskScore"], "archivePercent": archive_percent, "estimatedRiskScoreAfter": max(0, round(item["riskScore"] * (1 - reduction), 1)), "estimatedReadReduction": f"{archive_percent}% if archived rows match hot scan range"})
+    return rows
+
+
+def ai_root_cause_narrative(root: str | Path) -> str:
+    findings = analyze_evidence(root)
+    causes = root_cause_confidence(root)[:5]
+    lines = ["# Root Cause Narrative", ""]
+    if not findings:
+        return "# Root Cause Narrative\n\nNo findings were generated.\n"
+    lines.append("The evidence indicates several related performance pressure areas rather than a single isolated metric.")
+    for cause in causes:
+        lines.append(f"- `{cause['playbook']}` in `{cause['module']}` has {cause['count']} findings and confidence {cause.get('confidencePercent')}%.")
+    lines.append("")
+    lines.append("Recommended next action: validate the highest-confidence root cause with read-only scripts, assign the owner, and re-measure after any approved change.")
+    return "\n".join(lines) + "\n"
+
+
+def performance_digital_twin(root: str | Path) -> dict[str, Any]:
+    evidence = load_evidence(root)
+    return {
+        "environment": evidence.config.get("environment") or evidence.metadata.get("environment"),
+        "aosNodes": sorted({str(r.get("aos")) for r in evidence.tables["batch_jobs"] if r.get("aos")}),
+        "databases": sorted({str(r.get("database_name")) for r in evidence.tables["file_latency"] if r.get("database_name")}),
+        "batchJobs": len(evidence.tables["batch_jobs"]),
+        "queryFamilies": query_families(root)[:20],
+        "hotTables": table_heatmap(root)[:20],
+        "businessCalendar": evidence.metadata.get("businessCalendar", []) or evidence.config.get("businessCalendar", []),
+    }
+
+
+def causal_graph(root: str | Path) -> dict[str, Any]:
+    nodes, edges = {}, []
+    def node(node_id: str, kind: str, label: str | None = None):
+        nodes.setdefault(node_id, {"id": node_id, "kind": kind, "label": label or node_id})
+    for f in analyze_evidence(root):
+        node(f["id"], "finding", f["title"])
+        playbook = f["recommendation"].get("playbook", "unknown")
+        node(playbook, "root-cause")
+        edges.append({"from": playbook, "to": f["id"], "type": "explains"})
+        for wt in f["sqlContext"].get("waitTypes", []):
+            node(wt, "wait")
+            edges.append({"from": wt, "to": f["id"], "type": "evidence"})
+        for obj in f["sqlContext"].get("objects", []):
+            node(obj, "table")
+            edges.append({"from": f["id"], "to": obj, "type": "affects"})
+    return {"nodes": list(nodes.values()), "edges": edges}
+
+
+def autonomous_evidence_plan(root: str | Path) -> list[dict[str, Any]]:
+    existing = load_evidence(root).tables
+    plan = []
+    required = {
+        "blocking": "Collect blocking snapshot during reported slow window.",
+        "deadlock_processes": "Parse deadlock XML or enable system_health extraction.",
+        "trace_parser": "Import Trace Parser export to link SQL to X++ call stacks.",
+        "aos_counters": "Collect AOS/performance counters during the incident window.",
+        "sql_wait_stats_delta": "Collect wait deltas with -WaitDeltaSeconds for current pressure.",
+    }
+    for name, action in required.items():
+        if not existing.get(name):
+            plan.append({"missingEvidence": name, "action": action, "risk": "read-only"})
+    return plan
+
+
+def confidence_drilldown(root: str | Path) -> list[dict[str, Any]]:
+    rows = []
+    for f in analyze_evidence(root):
+        if f["confidence"] in {"low", "medium"}:
+            steps = ["collect wait delta", "capture execution plan", "map AX owner"]
+            if not f["axContext"].get("classes"):
+                steps.append("import Trace Parser or DynamicsPerf call stack")
+            rows.append({"id": f["id"], "confidence": f["confidence"], "nextChecks": steps})
+    return rows
+
+
+def performance_contracts(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    contracts = evidence.config.get("contracts", {"maxHighFindings": 5, "maxQueryAvgMs": 5000, "maxBatchSeconds": 3600})
+    rows = []
+    findings = analyze_evidence(root)
+    rows.append({"contract": "maxHighFindings", "actual": sum(1 for f in findings if f["severity"] in {"high","critical"}), "target": contracts["maxHighFindings"]})
+    for q in evidence.tables["sql_top_queries"]:
+        rows.append({"contract": f"query:{q.get('object_name')}", "actual": q.get("avg_duration_ms"), "target": contracts["maxQueryAvgMs"]})
+    for b in evidence.tables["batch_jobs"]:
+        rows.append({"contract": f"batch:{b.get('job_name')}", "actual": b.get("duration_seconds"), "target": b.get("sla_target_seconds") or contracts["maxBatchSeconds"]})
+    for r in rows:
+        r["status"] = "pass" if float(r.get("actual") or 0) <= float(r.get("target") or 0) else "fail"
+    return rows
+
+
+def query_to_xpp_trace(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    traces = evidence.tables["trace_parser"] + evidence.tables["dynamicsperf"]
+    if not traces:
+        raise FileNotFoundError("Trace Parser or DynamicsPerf evidence is required for Query-to-X++ trace linking.")
+    rows = []
+    for q in evidence.tables["sql_top_queries"]:
+        sql = str(q.get("statement_text", "")).upper()
+        for t in traces:
+            t_sql = str(t.get("sql_text") or t.get("query_hash") or "").upper()
+            if t_sql and (t_sql[:40] in sql or str(q.get("query_hash", "")) == str(t.get("query_hash", ""))):
+                rows.append({"queryHash": q.get("query_hash"), "object": q.get("object_name"), "class": t.get("class_name", ""), "method": t.get("method_name", ""), "source": "trace"})
+    return rows
+
+
+def change_blast_radius(root: str | Path, target: str) -> dict[str, Any]:
+    findings = analyze_evidence(root)
+    affected = [f for f in findings if target.upper() in json.dumps(f).upper()]
+    return {"target": target, "affectedFindings": len(affected), "modules": sorted({f["axContext"].get("module","Unknown") for f in affected}), "findings": affected[:25]}
+
+
+def temporal_hotspot_map(root: str | Path) -> list[dict[str, Any]]:
+    evidence = load_evidence(root)
+    rows = []
+    for source in ("sql_top_queries", "batch_jobs"):
+        for r in evidence.tables[source]:
+            ts = str(r.get("last_execution_time") or r.get("start_time") or "")
+            hour = ts[11:13] if len(ts) >= 13 else "unknown"
+            rows.append({"hour": hour, "source": source, "object": r.get("object_name") or r.get("job_name"), "pressure": r.get("total_logical_reads") or r.get("duration_seconds") or 1})
+    return rows
+
+
+def debt_interest(root: str | Path) -> list[dict[str, Any]]:
+    rows = []
+    for f in analyze_evidence(root):
+        debt = f.get("performanceDebt", {})
+        age = float(debt.get("ageDays") or 0)
+        recurrence = float(debt.get("recurrenceCount") or 1)
+        severity = SEVERITY_RANK.get(f["severity"], 1)
+        rows.append({"id": f["id"], "title": f["title"], "interestScore": round(severity * (1 + age / 30) * recurrence, 2), "nextDecision": debt.get("nextDecision")})
+    return sorted(rows, key=lambda r: r["interestScore"], reverse=True)
+
+
+def remediation_portfolio(root: str | Path) -> list[dict[str, Any]]:
+    scenarios = recommendation_scenarios(root)
+    portfolio = []
+    for item in scenarios:
+        for option in item["options"]:
+            risk = {"low": 1, "medium": 2, "medium-high": 3, "high": 4}.get(option["risk"], 2)
+            benefit = {"low": 1, "medium": 2, "medium-high": 3, "high": 4}.get(option["benefit"], 2)
+            portfolio.append({"findingId": item["id"], **option, "portfolioScore": round(benefit / risk, 2)})
+    return sorted(portfolio, key=lambda r: r["portfolioScore"], reverse=True)
+
+
+def validation_orchestrator(before: str | Path, after: str | Path, output_dir: str | Path) -> dict[str, Any]:
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    comparison = compare_baseline(before, after)
+    write_json(out / "validation-comparison.json", comparison)
+    (out / "validation-summary.md").write_text("# Validation Summary\n\n" + json.dumps(comparison, indent=2), encoding="utf-8")
+    return {"outputDir": str(out), "comparison": comparison}
+
+
+def aging_risk_index(root: str | Path) -> dict[str, Any]:
+    findings = analyze_evidence(root)
+    high = sum(1 for f in findings if f["severity"] in {"high","critical"})
+    growth = sum(float(r.get("growth_pct_30d") or 0) for r in load_evidence(root).tables["table_growth"])
+    score = min(100, 20 + high * 5 + growth)
+    return {"agingRiskIndex": round(score, 1), "drivers": {"highFindings": high, "dataGrowthPctSum": round(growth, 1), "sql2016SupportRisk": "support ends 2026-07-14"}}
+
+
+def d365_migration_signal(root: str | Path) -> list[dict[str, Any]]:
+    rows = []
+    for f in analyze_evidence(root):
+        signal = "tuning"
+        if f["classification"] in {"migration-signal", "redesign-needed", "capacity-planning-signal"}:
+            signal = "modernization"
+        if f.get("dataGrowth", {}).get("isGrowthDriven"):
+            signal = "data-platform-modernization"
+        rows.append({"id": f["id"], "title": f["title"], "signal": signal, "module": f["axContext"].get("module")})
+    return rows
+
+
+def approval_workflow(root: str | Path, output: str | Path) -> Path:
+    rows = [{"id": f["id"], "title": f["title"], "state": "proposed", "owner": f["axContext"].get("technicalOwner"), "updatedAt": now_iso()} for f in analyze_evidence(root)]
+    write_json(output, rows)
+    return Path(output)
+
+
+def explainability_scores(root: str | Path) -> list[dict[str, Any]]:
+    grades = {g["id"]: g["grade"] for g in evidence_quality_grades(root)}
+    grade_score = {"A": 95, "B": 80, "C": 60, "D": 35}
+    return [{"id": f["id"], "title": f["title"], "explainabilityScore": grade_score.get(grades.get(f["id"], "D"), 35), "evidenceGrade": grades.get(f["id"], "D")} for f in analyze_evidence(root)]
+
+
+def operator_copilot_context(root: str | Path) -> dict[str, Any]:
+    findings = analyze_evidence(root)
+    return {"commands": ["show-p1", "why", "evidence", "next-check", "owner", "validation"], "p1": findings[:10], "rootCauses": summarize_root_causes(findings)[:10]}
+
+
+def regression_unit_tests(root: str | Path) -> str:
+    lines = ["import unittest", "", "class AxPerformanceRegressionTests(unittest.TestCase):"]
+    for f in analyze_evidence(root)[:20]:
+        name = "".join(ch if ch.isalnum() else "_" for ch in f["id"].lower())
+        lines.extend([f"    def test_{name}(self):", f"        self.assertTrue(True, 'Track regression for {f['title']}')", ""])
+    return "\n".join(lines)
+
+
+def sensitive_boundary_detector(root: str | Path) -> list[dict[str, Any]]:
+    sensitive = []
+    patterns = ["login", "user", "client", "hostname", "statement_text", "query_sql_text", "inputbuf"]
+    for path in Path(root).glob("*.csv"):
+        if not path.exists():
+            continue
+        with path.open("r", encoding="utf-8-sig", newline="") as handle:
+            reader = csv.reader(handle)
+            headers = next(reader, [])
+        hits = [h for h in headers if any(p in h.lower() for p in patterns)]
+        if hits:
+            sensitive.append({"file": str(path), "sensitiveColumns": hits, "recommendation": "Run mask_evidence.py before sharing."})
+    return sensitive
+
+
+def self_healing_rule_update(root: str | Path, output: str | Path) -> Path:
+    rules = [{"match": f["recommendation"].get("playbook"), "classification": f["classification"], "validation": f["validation"].get("successMetric"), "sourceFinding": f["id"]} for f in analyze_evidence(root)]
+    write_json(output, rules)
+    return Path(output)
+
+
+def anonymized_pattern_export(root: str | Path, output: str | Path) -> Path:
+    rows = []
+    for f in analyze_evidence(root):
+        rows.append({"classification": f["classification"], "playbook": f["recommendation"].get("playbook"), "severity": f["severity"], "module": f["axContext"].get("module"), "evidenceGrade": "anonymized"})
+    write_json(output, rows)
+    return Path(output)
+
+
 def compare_baseline(before: str | Path, after: str | Path) -> dict[str, Any]:
     before_findings = analyze_evidence(before)
     after_findings = analyze_evidence(after)

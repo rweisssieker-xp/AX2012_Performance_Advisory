@@ -15,6 +15,16 @@ Implemented scripts:
 - `parse_plan_xml.py`: SQL Server execution plan XML parser.
 - `analyze_evidence.py`: generates normalized findings from an evidence directory.
 - `generate_report.py`: Markdown/HTML report generator.
+- `generate_html_report.py`: standalone HTML report generator.
+- `mask_evidence.py`: creates a masked evidence copy for sharing and audit review.
+- `update_trend_store.py`: persists findings into a SQLite trend store.
+- `generate_validation_scripts.py`: creates read-only validation SQL per finding.
+- `collect_ax_model_mapping.ps1`: reads AX model database metadata for class/object mapping.
+- `collect_ax_sql_trace.ps1`: reads `SysTraceTableSQL` when AX SQL tracing is enabled.
+- `collect_dynamicsperf_snapshot.ps1`: inventories a DynamicsPerf database.
+- `push_azure_devops_tickets.py`: creates Azure DevOps work items when credentials are provided.
+- `push_jira_tickets.py`: creates Jira issues when credentials are provided.
+- `push_powerbi_dataset.py`: pushes JSON rows to a Power BI streaming endpoint.
 - `generate_cab_package.py`: CAB/change-control package generator.
 - `compare_baseline.py`: before/after comparator for deployments, tuning actions, and batch schedule changes.
 - `export_evidence_pack.py`: bundles raw evidence, findings, approvals, and validation results for audit or change management.
@@ -40,6 +50,26 @@ Implemented scripts:
 - `manage_index_governance.py`: exports index candidate lifecycle backlog.
 - `analyze_query_families.py`: groups related query pressure.
 - `auto_triage.py`: routes findings by operational lane.
+- `check_slos.py`: evaluates AX process and query SLOs.
+- `detect_anomalies.py`: compares current evidence with trend baseline.
+- `release_gate.py`: passes/fails deployment evidence comparison.
+- `watch_plan_regressions.py`: exports SQL plan-regression candidates.
+- `custom_code_ownership_graph.py`: exports custom-code/finding ownership graph.
+- `estimate_cost_of_delay.py`: estimates daily risk cost of findings.
+- `grade_evidence_quality.py`: assigns A-D evidence grades.
+- `simulate_recommendation_scenarios.py`: expands findings into scenario options.
+- `compliance_mode_check.py`: checks GxP/CAB required fields.
+- `create_chain_of_custody.py`: hashes evidence files into custody manifest.
+- `map_workload_calendar.py`: maps findings to business calendar windows.
+- `forecast_capacity_exhaustion.py`: forecasts data/latency pressure.
+- `retention_policy_advisor.py`: proposes table retention review policies.
+- `capture_knowledge_feedback.py`: appends finding outcomes to a feedback KB.
+- `fleet_view.py`: summarizes multiple environments.
+- `generate_runbook.py`: creates operations runbook.
+- `correlate_sql_agent_jobs.py`: correlates SQL Agent and AX batch evidence.
+- `aos_topology_advisor.py`: reviews AOS/batch topology.
+- `archiving_impact_sandbox.py`: simulates archive impact.
+- `root_cause_narrative.py`: creates cause-and-effect narrative.
 - `update_performance_debt_register.py`: persists recurring findings, owners, deferment reasons, and next decisions.
 - `predict_sla_breach.py`: forecasts batch and close-window SLA breach risk from runtime and data-growth trends.
 - `detect_deployment_regression.py`: compares before/after evidence around deployments or configuration changes.
@@ -58,6 +88,9 @@ python .\scripts\analyze_evidence.py --evidence .\sample\evidence --output .\out
 python .\scripts\generate_report.py --evidence .\sample\evidence --output .\out\report.md
 python .\scripts\export_evidence_pack.py --evidence .\sample\evidence --output .\out\evidence-pack.zip
 python .\scripts\export_powerbi_dataset.py --evidence .\sample\evidence --output .\out\powerbi-findings.csv
+python .\scripts\generate_html_report.py --evidence .\sample\evidence --output .\out\report.html
+python .\scripts\generate_validation_scripts.py --evidence .\sample\evidence --output-dir .\out\validation
+python .\scripts\update_trend_store.py --evidence .\sample\evidence --db .\out\axpa-trends.sqlite
 ```
 
 Collect SQL evidence from a SQL Server using a read-only connection:

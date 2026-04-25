@@ -1,0 +1,19 @@
+risk_inputs:
+  mass_tables:
+    - InventTrans
+    - InventSum
+    - CustTrans
+    - VendTrans
+    - GeneralJournalAccountEntry
+  required_ax_columns:
+    - Partition
+    - DataAreaId
+  review_states:
+    - candidate-review
+    - dba-review
+    - ax-review
+    - test-approved
+    - cab-approved
+    - implemented
+    - validated
+    - rolled-back

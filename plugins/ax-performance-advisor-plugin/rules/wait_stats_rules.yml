@@ -1,0 +1,20 @@
+ignored_waits:
+  - BROKER_EVENTHANDLER
+  - CHECKPOINT_QUEUE
+  - CLR_AUTO_EVENT
+  - DIRTY_PAGE_POLL
+  - FT_IFTS_SCHEDULER_IDLE_WAIT
+  - QDS_ASYNC_QUEUE
+  - QDS_PERSIST_TASK_MAIN_LOOP_SLEEP
+  - SLEEP_TASK
+  - SQLTRACE_BUFFER_FLUSH
+  - XE_TIMER_EVENT
+actionable_waits:
+  PAGEIOLATCH_SH: storage_or_read_pressure
+  PAGEIOLATCH_EX: storage_or_write_pressure
+  LCK_M_X: blocking
+  LCK_M_S: blocking
+  WRITELOG: transaction_log_pressure
+  RESOURCE_SEMAPHORE: memory_grant_pressure
+  CXPACKET: parallelism_or_query_shape
+  CXCONSUMER: parallelism_or_query_shape

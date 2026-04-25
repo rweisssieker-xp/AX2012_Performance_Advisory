@@ -1,0 +1,36 @@
+tables:
+  InventTrans:
+    module: Inventory
+    business_owner: Supply Chain
+    technical_owner: AX Operations
+    risk: high
+  InventDim:
+    module: Inventory
+    business_owner: Supply Chain
+    technical_owner: AX Operations
+    risk: high
+  CustTrans:
+    module: Finance
+    business_owner: Finance AR
+    technical_owner: AX Operations
+    risk: high
+  VendTrans:
+    module: Finance
+    business_owner: Finance AP
+    technical_owner: AX Operations
+    risk: high
+  SalesLine:
+    module: Sales
+    business_owner: Sales Operations
+    technical_owner: AX Operations
+    risk: medium
+  PurchLine:
+    module: Purchasing
+    business_owner: Procurement
+    technical_owner: AX Operations
+    risk: medium
+  GeneralJournalAccountEntry:
+    module: Finance
+    business_owner: Finance
+    technical_owner: AX Operations
+    risk: high
