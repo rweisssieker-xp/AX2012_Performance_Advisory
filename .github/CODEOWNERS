@@ -1,0 +1,11 @@
+# Default maintainers for repository-level review.
+* @AX-Performance-Advisory/maintainers
+
+# Plugin implementation and tests.
+/plugins/ax-performance-advisor-plugin/scripts/ @AX-Performance-Advisory/maintainers
+/plugins/ax-performance-advisor-plugin/tests/ @AX-Performance-Advisory/maintainers
+
+# Security-sensitive docs and configuration.
+/SECURITY.md @AX-Performance-Advisory/maintainers
+/plugins/ax-performance-advisor-plugin/docs/security-model.md @AX-Performance-Advisory/maintainers
+/plugins/ax-performance-advisor-plugin/docs/threat-model.md @AX-Performance-Advisory/maintainers

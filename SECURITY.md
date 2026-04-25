@@ -22,3 +22,20 @@ The project expects secrets to be supplied through environment variables or loca
 
 Use `scripts/mask_evidence.py` before sharing evidence outside the trusted operations team.
 
+## Evidence Classification
+
+Treat these files as sensitive by default:
+
+- SQL text, query plans, deadlock XML, Query Store exports.
+- AX batch history, user sessions, AOS event logs, Trace Parser exports.
+- DynamicsPerf exports and AX SQL trace exports.
+- Dashboards and reports generated from live environments.
+
+## Safe Disclosure
+
+For public issues or pull requests:
+
+- Use anonymized sample evidence.
+- Replace server, database, company, user, customer, item, and path values.
+- Attach only masked evidence packs.
+- Describe missing permissions or collector failures without exposing credentials or internal hostnames.
