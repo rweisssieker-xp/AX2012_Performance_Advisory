@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "ax-performance-advisor": {
+      "command": "python",
+      "args": [
+        "./scripts/mcp_server.py"
+      ],
+      "env": {
+        "AXPA_SQL_CONNECTION_STRING": "",
+        "AXPA_DYNAMICS_PERF_CONNECTION_STRING": "",
+        "AXPA_ENABLE_EVENT_LOG_READER": "false",
+        "AXPA_ENABLE_PERF_COUNTER_READER": "false",
+        "AXPA_ENABLE_POWERBI_EXPORT": "false",
+        "AXPA_ENABLE_TICKET_EXPORT": "false",
+        "AXPA_READ_ONLY": "true"
+      }
+    }
+  }
+}

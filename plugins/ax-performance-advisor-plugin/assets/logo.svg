@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240" role="img" aria-label="AX Performance Advisor logo">
+  <rect width="640" height="240" rx="28" fill="#0f172a"/>
+  <g transform="translate(44 48)">
+    <rect width="144" height="144" rx="24" fill="#1e3a8a"/>
+    <path d="M28 94h88" stroke="#bfdbfe" stroke-width="9" stroke-linecap="round"/>
+    <path d="M34 82l25-31 20 16 32-43" fill="none" stroke="#22c55e" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="112" cy="24" r="9" fill="#f59e0b"/>
+  </g>
+  <text x="220" y="105" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="700">AX Performance Advisor</text>
+  <text x="222" y="148" fill="#cbd5e1" font-family="Segoe UI, Arial, sans-serif" font-size="22">SQL, AOS, batch and AX evidence correlation</text>
+</svg>

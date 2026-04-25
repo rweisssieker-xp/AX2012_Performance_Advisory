@@ -1,0 +1,56 @@
+{
+  "name": "ax-performance-advisor-plugin",
+  "version": "0.1.0",
+  "description": "AX 2012 R3 performance advisor that correlates SQL Server, AOS, batch, and AX table evidence into explainable recommendations.",
+  "author": {
+    "name": "AX Performance Advisory",
+    "email": "maintainer@example.com",
+    "url": "https://example.com/ax-performance-advisory"
+  },
+  "homepage": "https://example.com/ax-performance-advisory",
+  "repository": "https://example.com/ax-performance-advisory/repository",
+  "license": "MIT",
+  "keywords": [
+    "dynamics-ax-2012",
+    "sql-server",
+    "performance",
+    "batch-jobs",
+    "gxp",
+    "audit",
+    "change-management",
+    "power-bi",
+    "query-tuning"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "AX Performance Advisor",
+    "shortDescription": "Correlates AX 2012 and SQL Server performance evidence into prioritized actions.",
+    "longDescription": "Collects and interprets SQL Server 2016, Dynamics AX 2012 R3, AOS, batch, Trace Parser, DynamicsPerf, business-calendar, and change-history evidence. Produces explainable findings with observed metrics, affected AX objects, likely causes, expected impact, change-readiness risk, validation steps, rollback notes, and before/after proof. Designed for read-only advisory workflows where changes require human approval, auditability, and ITIL/GxP-style evidence packs.",
+    "developerName": "AX Performance Advisory",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Analyze",
+      "Report",
+      "Audit",
+      "Dashboard"
+    ],
+    "websiteURL": "https://example.com/ax-performance-advisory",
+    "privacyPolicyURL": "https://example.com/privacy",
+    "termsOfServiceURL": "https://example.com/terms",
+    "defaultPrompt": [
+      "Run a daily AX 2012 and SQL Server health check from the collected evidence.",
+      "Analyze slow AX queries and map them to affected tables, batches, and wait patterns.",
+      "Create a management summary with risks, business impact, and recommended change actions.",
+      "Compare performance before and after a deployment or tuning change.",
+      "Generate an audit-ready evidence pack for the top findings."
+    ],
+    "brandColor": "#2563EB",
+    "composerIcon": "./assets/icon.svg",
+    "logo": "./assets/logo.svg",
+    "screenshots": []
+  }
+}
