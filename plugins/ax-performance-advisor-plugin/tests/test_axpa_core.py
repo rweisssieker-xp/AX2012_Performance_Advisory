@@ -23,6 +23,7 @@ from ai_ki_extensions import generate_ai_ki_extensions
 from market_differentiators import generate_market_differentiators
 from learning_extensions import generate_learning_extensions
 from autonomous_intelligence import generate_autonomous_intelligence
+from autonomous_ops import generate_autonomous_ops
 from mcp_server import handle
 
 
@@ -254,6 +255,20 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("recommendationQualityGate", payload)
         self.assertIn("kpiStoryboard", payload)
         self.assertIn("anonymizedPatternLibrary", payload)
+
+    def test_autonomous_ops_generate_twenty_operational_features(self) -> None:
+        payload = generate_autonomous_ops(self.evidence)
+        self.assertEqual(payload["featureCount"], 20)
+        self.assertIn("investigationQueue", payload)
+        self.assertIn("followUpQuestions", payload)
+        self.assertIn("evidenceAcquisitionPlanner", payload)
+        self.assertIn("changeDrafts", payload)
+        self.assertIn("validationRunPlanner", payload)
+        self.assertIn("readinessGate", payload)
+        self.assertIn("nextBestActions", payload)
+        self.assertIn("executiveRiskBriefing", payload)
+        self.assertGreater(len(payload["investigationQueue"]), 0)
+        self.assertGreater(len(payload["evidenceAcquisitionPlanner"]["tasks"]), 0)
 
 
 if __name__ == "__main__":

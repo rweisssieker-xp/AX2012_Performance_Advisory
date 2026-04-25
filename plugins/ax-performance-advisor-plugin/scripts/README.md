@@ -26,6 +26,7 @@ Implemented scripts:
 - `push_jira_tickets.py`: creates Jira issues when credentials are provided.
 - `push_powerbi_dataset.py`: pushes JSON rows to a Power BI streaming endpoint.
 - `generate_dashboard.py`: creates an interactive local HTML dashboard.
+- `autonomous_ops.py`: creates the Autonomous Ops pack with investigation queues, follow-up questions, evidence acquisition plans, change drafts, validation plans, readiness gates, next-best actions, and executive risk briefings.
 - `check_sql_permissions.ps1`: verifies read-only SQL permission posture.
 - `setup_scheduled_task.ps1`: registers a Windows scheduled task for AXPA automation.
 - `plugin_integrity.py`: creates or verifies plugin code integrity manifests.

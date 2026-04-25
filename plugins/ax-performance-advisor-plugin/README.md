@@ -488,6 +488,8 @@ AI learning extensions are documented in `docs/learning-extensions.md`, includin
 
 Autonomous intelligence artifacts are documented in `docs/autonomous-intelligence.md`, including evidence scout, investigation tree, root-cause debate, recommendation quality gate, KPI storyboard, and anonymized pattern library.
 
+Autonomous Ops is documented in `docs/autonomous-ops.md`. It adds 20 operational AI/KI capabilities, including investigation queues, dashboard follow-up questions, evidence acquisition commands, change drafts, validation planners, readiness gates, decision memory, next-best actions, and executive risk briefings. It remains read-only and evidence-gated.
+
 ## Planned Extensions
 
 - AX rule-library files for table families, workload windows, and anti-patterns.
