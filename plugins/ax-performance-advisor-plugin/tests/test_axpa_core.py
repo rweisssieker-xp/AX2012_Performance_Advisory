@@ -21,6 +21,8 @@ from governance_extensions import generate_governance_extensions
 from strategy_extensions import generate_strategy_extensions
 from ai_ki_extensions import generate_ai_ki_extensions
 from market_differentiators import generate_market_differentiators
+from learning_extensions import generate_learning_extensions
+from autonomous_intelligence import generate_autonomous_intelligence
 from mcp_server import handle
 
 
@@ -232,6 +234,26 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("processOwnerScorecards", payload)
         self.assertIn("evidenceMarketplace", payload)
         self.assertIn("valueRealization", payload)
+
+    def test_learning_extensions_generate_ai_decision_artifacts(self) -> None:
+        out = self.tmp / "learning"
+        payload = generate_learning_extensions(self.evidence, out)
+        self.assertIn("recommendationMemory", payload)
+        self.assertIn("similaritySearch", payload)
+        self.assertIn("acceptanceSimulation", payload)
+        self.assertIn("executiveNarrativeVariants", payload)
+        self.assertIn("anomalyExplanation", payload)
+        self.assertIn("actionConfidenceTuning", payload)
+        self.assertTrue((out / "recommendation-memory.sqlite").exists())
+
+    def test_autonomous_intelligence_generate_ai_usp_artifacts(self) -> None:
+        payload = generate_autonomous_intelligence(self.evidence)
+        self.assertIn("evidenceScout", payload)
+        self.assertIn("investigationTree", payload)
+        self.assertIn("rootCauseDebate", payload)
+        self.assertIn("recommendationQualityGate", payload)
+        self.assertIn("kpiStoryboard", payload)
+        self.assertIn("anonymizedPatternLibrary", payload)
 
 
 if __name__ == "__main__":

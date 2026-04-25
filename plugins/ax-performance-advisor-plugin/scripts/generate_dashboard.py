@@ -11,6 +11,8 @@ from governance_extensions import generate_governance_extensions
 from strategy_extensions import generate_strategy_extensions
 from ai_ki_extensions import generate_ai_ki_extensions
 from market_differentiators import generate_market_differentiators
+from learning_extensions import generate_learning_extensions
+from autonomous_intelligence import generate_autonomous_intelligence
 from axpa_core import analyze_evidence, module_health_scores, summarize_root_causes
 
 
@@ -127,6 +129,8 @@ def main() -> int:
     strategy = generate_strategy_extensions(args.evidence)
     ai_ki = generate_ai_ki_extensions(args.evidence)
     market = generate_market_differentiators(args.evidence)
+    learning = generate_learning_extensions(args.evidence, Path(args.output).parent / "learning")
+    autonomous = generate_autonomous_intelligence(args.evidence)
     scores = module_health_scores(findings)
     causes = summarize_root_causes(findings)
     severity = _counts(findings, lambda f: f.get("severity"))
@@ -154,6 +158,8 @@ def main() -> int:
             "strategy": strategy,
             "aiKi": ai_ki,
             "market": market,
+            "learning": learning,
+            "autonomous": autonomous,
         },
         ensure_ascii=False,
     )
@@ -249,6 +255,8 @@ input,select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:9px 1
     <button class="tabBtn" data-tab="strategy">Strategy</button>
     <button class="tabBtn" data-tab="aiki">More AI/KI</button>
     <button class="tabBtn" data-tab="market">More USPs</button>
+    <button class="tabBtn" data-tab="learning">AI Learning</button>
+    <button class="tabBtn" data-tab="auto">Autonomous AI</button>
   </section>
 
   <section class="tabPanel active" id="tab-ai">
@@ -337,6 +345,18 @@ input,select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:9px 1
       <div class="list" id="marketDifferentiators"></div>
     </div>
   </section>
+  <section class="tabPanel" id="tab-learning">
+    <div class="panel">
+      <h2>AI Learning</h2>
+      <div class="list" id="learningExtensions"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-auto">
+    <div class="panel">
+      <h2>Autonomous AI</h2>
+      <div class="list" id="autonomousIntelligence"></div>
+    </div>
+  </section>
 
   <section class="filters">
     <input id="q" placeholder="Suchen nach Tabelle, Wait, Batch, Empfehlung...">
@@ -379,8 +399,10 @@ function renderGovernance(){const g=data.governance||{};document.getElementById(
 function renderStrategy(){const s=data.strategy||{};document.getElementById('strategyExtensions').innerHTML=[listItem('What-if Simulation',`${(s.whatIfSimulation?.scenarios||[]).slice(0,8).map(x=>`${esc(x.scenario)}: ${esc(x.riskReductionPercent)}% reduction estimate`).join('<br>')}`),listItem('Baseline Benchmark',`Health: <b>${esc(s.baselineBenchmark?.healthScore)}</b><br>${esc(s.baselineBenchmark?.benchmarkInterpretation)}`),listItem('Evidence Completeness Roadmap',`${(s.evidenceCompletenessRoadmap?.sources||[]).map(x=>`${esc(x.present?'done':'missing')}: ${esc(x.source)} - ${esc(x.value)}`).join('<br>')}`),listItem('Remediation Kanban',`Now: ${esc((s.remediationKanban?.Now||[]).length)}<br>Next: ${esc((s.remediationKanban?.Next||[]).length)}<br>Later: ${esc((s.remediationKanban?.Later||[]).length)}<br>Waiting Evidence: ${esc((s.remediationKanban?.['Waiting Evidence']||[]).length)}`),listItem('KPI Contracts',`${(s.kpiContracts||[]).slice(0,8).map(x=>`${esc(x.kpi)} current=${esc(x.current)} target=${esc(x.target)}`).join('<br>')}`),listItem('Capability Matrix',`${(s.capabilityMatrix||[]).map(x=>`${esc(x.status)}: ${esc(x.capability)} - ${esc(x.differentiator)}`).join('<br>')}`)].join('')}
 function renderAiKi(){const k=data.aiKi||{};document.getElementById('aiKiExtensions').innerHTML=[listItem('Hypothesis Ranking',`${(k.hypothesisRanking||[]).slice(0,8).map(x=>`${esc(x.hypothesis)} score=${esc(x.score)} confidence=${esc(x.confidence)}`).join('<br>')}`),listItem('Counterfactuals',`${(k.counterfactuals||[]).slice(0,5).map(x=>`${esc(x.findingId)}: ${esc(x.ifWeValidateInTest)}`).join('<br>')}`),listItem('Causal Narrative',`${esc(k.causalNarrative?.summary)}<br>${(k.causalNarrative?.chain||[]).map(x=>`${esc(x.cause)} -> ${esc(x.effect)}`).join('<br>')}`),listItem('LLM Context Pack',`Context findings: ${esc((k.llmContextPack?.contextFindings||[]).length)}<br>Policy: ${esc(k.llmContextPack?.sourcePolicy)}<br><span class="code">${esc((k.llmContextPack?.systemPrompt||'').slice(0,300))}</span>`),listItem('Evidence Chunks',`Chunks: ${esc((k.evidenceChunks||[]).length)}<br>${(k.evidenceChunks||[]).slice(0,3).map(x=>`${esc(x.id)}: ${esc(x.text).slice(0,180)}`).join('<br>')}`),listItem('Confidence Calibration',`${Object.entries(k.confidenceCalibration?.summary||{}).map(([a,b])=>`${esc(a)}=${esc(b)}`).join('<br>')}`)].join('')}
 function renderMarket(){const m=data.market||{};document.getElementById('marketDifferentiators').innerHTML=[listItem('Vendor-neutral Positioning',`${esc(m.vendorNeutralComparison?.positioning)}<br><b>AXPA:</b> ${(m.vendorNeutralComparison?.axpaStrength||[]).map(esc).join(', ')}`),listItem('Migration Readiness',`Score: <b>${esc(m.migrationReadiness?.readinessScore)}</b><br>Signals: ${esc(m.migrationReadiness?.signalCount)}<br>${esc(m.migrationReadiness?.recommendation)}`),listItem('Resilience Score',`Score: <b>${esc(m.resilienceScore?.score)}</b><br>High: ${esc(m.resilienceScore?.highFindings)} Debt: ${esc(m.resilienceScore?.debtItems)} Approval: ${esc(m.resilienceScore?.approvalItems)}`),listItem('Knowledge Graph',`Nodes: ${esc(m.knowledgeGraph?.nodeCount)}<br>Edges: ${esc(m.knowledgeGraph?.edgeCount)}`),listItem('Process Owner Scorecards',`${(m.processOwnerScorecards||[]).slice(0,8).map(x=>`${esc(x.owner)} score=${esc(x.score)} findings=${esc(x.findingCount)} high=${esc(x.highCount)}`).join('<br>')}`),listItem('Evidence Marketplace',`${(m.evidenceMarketplace||[]).map(x=>`${esc(x.evidence)}: ${esc(x.value)}`).join('<br>')}`),listItem('Value Realization',`Opportunities: ${esc(m.valueRealization?.opportunityCount)}<br>${(m.valueRealization?.opportunities||[]).slice(0,8).map(x=>`${esc(x.initiative)} (${esc(x.findingCount)})`).join('<br>')}`)].join('')}
+function renderLearning(){const l=data.learning||{};document.getElementById('learningExtensions').innerHTML=[listItem('Recommendation Memory',`Entries: ${esc((l.recommendationMemory?.entries||[]).length)}<br>DB: <span class="code">${esc(l.recommendationMemory?.db)}</span>`),listItem('Similarity Search',`${(l.similaritySearch||[]).slice(0,5).map(x=>`${esc(x.findingId)} similar=${esc((x.similar||[]).length)}`).join('<br>')}`),listItem('Acceptance Simulation',`${Object.entries(l.acceptanceSimulation||{}).map(([k,v])=>`${esc(k)}: items=${esc(v.items)} load=${esc(v.governanceLoad)}`).join('<br>')}`),listItem('Executive Narrative Variants',`${Object.entries(l.executiveNarrativeVariants||{}).map(([k,v])=>`<b>${esc(k)}</b>: ${esc(v)}`).join('<br>')}`),listItem('Anomaly Explanation',`${(l.anomalyExplanation||[]).slice(0,5).map(x=>`${esc(x.findingId)}: ${esc(x.plainExplanation).slice(0,180)}`).join('<br>')}`),listItem('Action Confidence Tuning',`${(l.actionConfidenceTuning||[]).slice(0,8).map(x=>`${esc(x.findingId)} confidence=${esc(x.actionConfidence)}`).join('<br>')}`)].join('')}
+function renderAutonomous(){const a=data.autonomous||{};document.getElementById('autonomousIntelligence').innerHTML=[listItem('Evidence Scout',`${(a.evidenceScout?.sources||[]).map(x=>`${esc(x.present?'present':'missing')}: ${esc(x.source)} - ${esc(x.whyItMatters)}`).join('<br>')}`),listItem('Investigation Tree',`${esc(a.investigationTree?.rootQuestion)}<br>${(a.investigationTree?.nodes||[]).slice(0,5).map(x=>`${esc(x.findingId)}: ${esc(x.question)}`).join('<br>')}`),listItem('Root Cause Debate',`${(a.rootCauseDebate||[]).slice(0,6).map(x=>`<b>${esc(x.hypothesis)}</b>: ${esc(x.argumentFor)} / ${esc(x.argumentAgainst)}`).join('<br>')}`),listItem('Recommendation Quality Gate',`Pass: ${esc(a.recommendationQualityGate?.passCount)}<br>Items: ${esc((a.recommendationQualityGate?.items||[]).length)}`),listItem('KPI Storyboard',`${(a.kpiStoryboard?.slides||[]).map(x=>`<b>${esc(x.title)}</b>: ${esc(x.message)}`).join('<br>')}`),listItem('Anonymized Pattern Library',`Patterns: ${esc((a.anonymizedPatternLibrary||[]).length)}<br>${(a.anonymizedPatternLibrary||[]).slice(0,5).map(x=>`${esc(x.patternId)} ${esc(x.playbook)} ${esc(x.module)}`).join('<br>')}`)].join('')}
 function initTabs(){document.querySelectorAll('.tabBtn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tabPanel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+btn.dataset.tab).classList.add('active')}))}
-function init(){const score=data.riskScore||0;document.getElementById('score').textContent=score;const ring=document.getElementById('scoreRing');ring.style.setProperty('--pct',score);ring.style.setProperty('--color',score>=75?'var(--green)':score>=50?'var(--amber)':'var(--red)');document.getElementById('generated').textContent='Generated: '+new Date().toLocaleString();renderKpis();severityDonut();bars('causes',data.rootCauseBars||[],'#2563eb');bars('modules',data.modules,'#0891b2');bars('playbooks',data.playbooks,'#6d28d9');fillSelect('module',data.modules);fillSelect('playbook',data.playbooks);renderTop();renderAiTabs();initQa();renderAdmin();renderEnterprise();renderAdvanced();renderGovernance();renderStrategy();renderAiKi();renderMarket();initTabs();['q','sev','module','playbook'].forEach(id=>document.getElementById(id).addEventListener('input',renderRows));renderRows()}
+function init(){const score=data.riskScore||0;document.getElementById('score').textContent=score;const ring=document.getElementById('scoreRing');ring.style.setProperty('--pct',score);ring.style.setProperty('--color',score>=75?'var(--green)':score>=50?'var(--amber)':'var(--red)');document.getElementById('generated').textContent='Generated: '+new Date().toLocaleString();renderKpis();severityDonut();bars('causes',data.rootCauseBars||[],'#2563eb');bars('modules',data.modules,'#0891b2');bars('playbooks',data.playbooks,'#6d28d9');fillSelect('module',data.modules);fillSelect('playbook',data.playbooks);renderTop();renderAiTabs();initQa();renderAdmin();renderEnterprise();renderAdvanced();renderGovernance();renderStrategy();renderAiKi();renderMarket();renderLearning();renderAutonomous();initTabs();['q','sev','module','playbook'].forEach(id=>document.getElementById(id).addEventListener('input',renderRows));renderRows()}
 init();
 </script>
 </body>

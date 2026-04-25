@@ -484,6 +484,10 @@ Market differentiator USPs are documented in `docs/market-differentiators.md`, i
 
 The local RBAC web portal and LLM connector are documented in `docs/web-portal-and-llm.md`.
 
+AI learning extensions are documented in `docs/learning-extensions.md`, including recommendation memory, similarity search, acceptance simulation, narrative variants, anomaly explanations, and action confidence tuning.
+
+Autonomous intelligence artifacts are documented in `docs/autonomous-intelligence.md`, including evidence scout, investigation tree, root-cause debate, recommendation quality gate, KPI storyboard, and anonymized pattern library.
+
 ## Planned Extensions
 
 - AX rule-library files for table families, workload windows, and anti-patterns.
