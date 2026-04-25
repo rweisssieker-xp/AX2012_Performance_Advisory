@@ -4,10 +4,24 @@ from collections import Counter
 from pathlib import Path
 
 from ai_insights import generate_ai_insights
+from admin_execution import build_execution_plan
 from axpa_core import analyze_evidence, module_health_scores, summarize_root_causes
 
 
 SEVERITY_WEIGHT = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+
+ROOT_CAUSE_LABELS = {
+    "sql-wait-analysis": "SQL wait pressure",
+    "stale-statistics": "Stale statistics",
+    "deployment-regression": "Deployment or plan regression",
+    "missing-composite-index-candidate": "Index coverage candidate",
+    "data-growth": "Data growth pressure",
+    "blocking-chain": "Blocking chain",
+    "parameter-sensitive-plan": "Parameter-sensitive plan",
+    "tempdb-pressure": "TempDB pressure",
+    "file-latency": "I/O latency",
+    "batch-collision": "Batch collision",
+}
 
 
 def _counts(findings, getter):
@@ -38,6 +52,49 @@ def _top_findings(findings):
     return ranked[:20]
 
 
+def _root_cause_bars(findings):
+    groups = {}
+    for finding in findings:
+        playbook = finding.get("recommendation", {}).get("playbook") or finding.get("classification") or "review"
+        label = ROOT_CAUSE_LABELS.get(playbook, playbook.replace("-", " ").title())
+        group = groups.setdefault(
+            playbook,
+            {
+                "name": label,
+                "playbook": playbook,
+                "value": 0,
+                "riskPoints": 0,
+                "highestSeverity": "informational",
+                "modules": Counter(),
+                "sampleIds": [],
+            },
+        )
+        group["value"] += 1
+        rank = SEVERITY_WEIGHT.get(finding.get("severity", "low"), 1)
+        group["riskPoints"] += rank
+        if rank > SEVERITY_WEIGHT.get(group["highestSeverity"], 0):
+            group["highestSeverity"] = finding.get("severity", "low")
+        module = finding.get("axContext", {}).get("module") or "Unknown"
+        group["modules"][module] += 1
+        if len(group["sampleIds"]) < 5:
+            group["sampleIds"].append(finding.get("id", ""))
+    rows = []
+    for group in groups.values():
+        modules = ", ".join(name for name, _ in group["modules"].most_common(3))
+        rows.append(
+            {
+                "name": group["name"],
+                "playbook": group["playbook"],
+                "value": group["value"],
+                "riskPoints": group["riskPoints"],
+                "highestSeverity": group["highestSeverity"],
+                "modules": modules,
+                "sampleIds": group["sampleIds"],
+            }
+        )
+    return sorted(rows, key=lambda row: (-row["riskPoints"], -row["value"], row["name"]))
+
+
 def _collector_errors(evidence):
     root = Path(evidence)
     errors = []
@@ -57,6 +114,7 @@ def main() -> int:
 
     findings = analyze_evidence(args.evidence)
     ai = generate_ai_insights(args.evidence, "Warum war AX langsam?")
+    admin_plan = build_execution_plan(args.evidence, Path(args.output).parent / "admin-execution", "TEST", "high")
     scores = module_health_scores(findings)
     causes = summarize_root_causes(findings)
     severity = _counts(findings, lambda f: f.get("severity"))
@@ -68,6 +126,7 @@ def main() -> int:
             "findings": findings,
             "scores": scores,
             "causes": causes,
+            "rootCauseBars": _root_cause_bars(findings),
             "severity": severity,
             "modules": modules,
             "playbooks": playbooks,
@@ -76,6 +135,7 @@ def main() -> int:
             "riskScore": _risk_score(findings),
             "collectorErrors": _collector_errors(args.evidence),
             "ai": ai,
+            "adminExecution": admin_plan,
         },
         ensure_ascii=False,
     )
@@ -162,6 +222,9 @@ input,select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:9px 1
     <button class="tabBtn" data-tab="evidence">Evidence Gaps</button>
     <button class="tabBtn" data-tab="tickets">Ticket Drafts</button>
     <button class="tabBtn" data-tab="collectors">Collector Status</button>
+    <button class="tabBtn" data-tab="real">Realization Pack</button>
+    <button class="tabBtn" data-tab="qa">Implementation Q&A</button>
+    <button class="tabBtn" data-tab="admin">Admin Execution</button>
   </section>
 
   <section class="tabPanel active" id="tab-ai">
@@ -190,6 +253,30 @@ input,select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:9px 1
   <section class="tabPanel" id="tab-evidence"><div class="panel"><h2>Evidence Gaps</h2><div class="list" id="evidenceGaps"></div></div></section>
   <section class="tabPanel" id="tab-tickets"><div class="panel"><h2>Ticket Drafts</h2><div class="list" id="ticketDrafts"></div></div></section>
   <section class="tabPanel" id="tab-collectors"><div class="panel"><h2>Collector Status</h2><div class="list" id="collectorStatus"></div></div></section>
+  <section class="tabPanel" id="tab-real"><div class="panel"><h2>Realization Pack</h2><div class="list" id="realizationPack"></div></div></section>
+  <section class="tabPanel" id="tab-qa">
+    <div class="panel">
+      <h2>Implementation Q&A</h2>
+      <div class="filters" style="position:static;margin:0 0 12px;grid-template-columns:1fr 240px">
+        <select id="qaFinding"></select>
+        <select id="qaQuestion">
+          <option value="next">Was ist der nächste sichere Umsetzungsschritt?</option>
+          <option value="test">Wie teste ich das in TEST?</option>
+          <option value="risk">Welche Risiken hat die Umsetzung?</option>
+          <option value="approval">Braucht das CAB/GxP Approval?</option>
+          <option value="rollback">Wie sieht Rollback aus?</option>
+          <option value="evidence">Welche Evidence fehlt noch?</option>
+        </select>
+      </div>
+      <div class="list" id="qaAnswer"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-admin">
+    <div class="panel">
+      <h2>Admin Execution Preview</h2>
+      <div class="list" id="adminExecution"></div>
+    </div>
+  </section>
 
   <section class="filters">
     <input id="q" placeholder="Suchen nach Tabelle, Wait, Batch, Empfehlung...">
@@ -213,16 +300,21 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const sevWeight={critical:4,high:3,medium:2,low:1};
 function count(list,key){const m=new Map();list.forEach(x=>{const v=key(x)||'Unknown';m.set(v,(m.get(v)||0)+1)});return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([name,value])=>({name,value}))}
 function fillSelect(id,items){const el=document.getElementById(id);items.forEach(i=>{const o=document.createElement('option');o.value=i.name;o.textContent=i.name;el.appendChild(o)})}
-function bars(id,items,color){const max=Math.max(1,...items.map(i=>i.value));document.getElementById(id).innerHTML=items.slice(0,10).map(i=>`<div class="barRow" title="${esc(i.name)}"><div class="barLabel">${esc(i.name)}</div><div class="barTrack"><div class="barFill" style="width:${Math.max(4,i.value/max*100)}%;background:${color}"></div></div><div class="barValue">${i.value}</div></div>`).join('')||'<span class="muted">Keine Daten</span>'}
+function bars(id,items,color){const max=Math.max(1,...items.map(i=>i.value));document.getElementById(id).innerHTML=items.slice(0,10).map(i=>`<div class="barRow" title="${esc(i.name)}${i.modules?' | Modules: '+esc(i.modules):''}${i.highestSeverity?' | Highest: '+esc(i.highestSeverity):''}"><div class="barLabel">${esc(i.name)}${i.highestSeverity?` <span class="muted">(${esc(i.highestSeverity)})</span>`:''}</div><div class="barTrack"><div class="barFill" style="width:${Math.max(4,i.value/max*100)}%;background:${color}"></div></div><div class="barValue">${i.value}</div></div>`).join('')||'<span class="muted">Keine Daten</span>'}
 function severityDonut(){const total=data.findings.length||1;let start=0;const parts=['critical','high','medium','low'].map(s=>{const item=data.severity.find(x=>x.name===s);const value=item?item.value:0;const pct=value/total*100;const seg=`${colors[s]} ${start}% ${start+pct}%`;start+=pct;return seg});document.getElementById('donut').style.background=`conic-gradient(${parts.join(',')},#e6eaf1 0)`;document.getElementById('donutTotal').textContent=data.findings.length;document.getElementById('severityLegend').innerHTML=['critical','high','medium','low'].map(s=>{const v=(data.severity.find(x=>x.name===s)||{value:0}).value;return `<div class="legendItem"><span class="swatch" style="background:${colors[s]}"></span><span>${s}</span><b>${v}</b></div>`}).join('')}
 function renderKpis(){const high=data.findings.filter(f=>['critical','high'].includes(f.severity)).length;const approval=data.findings.filter(f=>f.recommendation?.requiresApproval).length;const tables=new Set(data.findings.flatMap(f=>f.axContext?.tables||[]));const waitFindings=data.findings.filter(f=>(f.sqlContext?.waitTypes||[]).length).length;document.getElementById('kpis').innerHTML=[['Findings',data.findings.length,'alle generierten Befunde'],['High / Critical',high,'sofort priorisieren'],['Betroffene Tabellen',tables.size,'aus AX/SQL-Kontext'],['Wait-basierte Findings',waitFindings,'SQL-Wait-Korrelation'],['Approval-relevant',approval,'Change Control erforderlich']].map(k=>`<div class="kpi"><label>${k[0]}</label><strong>${k[1]}</strong><small>${k[2]}</small></div>`).join('')}
 function renderTop(){const top=data.topFindings.slice(0,10);document.getElementById('topFindings').innerHTML=top.map(f=>`<article class="finding"><div class="findingTitle"><b>${esc(f.title)}</b><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span></div><p>${esc(f.recommendation?.summary||f.likelyCause||'')}</p><p><b>Playbook:</b> ${esc(f.recommendation?.playbook||'')} <span class="muted">|</span> <b>Module:</b> ${esc(f.axContext?.module||'Unknown')} <span class="muted">|</span> <b>Confidence:</b> ${esc(f.confidence||'')}</p></article>`).join('')}
 function filtered(){const q=document.getElementById('q').value.toLowerCase();const sev=document.getElementById('sev').value;const mod=document.getElementById('module').value;const play=document.getElementById('playbook').value;return data.findings.filter(f=>(!sev||f.severity===sev)&&(!mod||(f.axContext?.module||'Unknown')===mod)&&(!play||(f.recommendation?.playbook||'Unknown')===play)&&(!q||JSON.stringify(f).toLowerCase().includes(q))).sort((a,b)=>(sevWeight[b.severity]||0)-(sevWeight[a.severity]||0))}
 function renderRows(){const rows=filtered();document.getElementById('rows').innerHTML=rows.slice(0,250).map(f=>{const evidence=(f.evidence||[]).slice(0,2).map(e=>`${esc(e.source)}:${esc(e.metric)}=${esc(e.value)}`).join('<br>');return `<tr><td>${esc(f.id)}</td><td><span class="sev ${esc(f.severity)}">${esc(f.severity)}</span><br><span class="muted">${esc(f.confidence)}</span></td><td>${esc(f.axContext?.module||'Unknown')}</td><td><b>${esc(f.title)}</b><br><span class="muted">${esc(f.likelyCause||'')}</span></td><td>${esc(f.recommendation?.summary||'')}<br><span class="muted">${esc(f.recommendation?.playbook||'')}</span></td><td>${evidence}</td></tr>`}).join('');document.getElementById('foot').textContent=`${rows.length} von ${data.findings.length} Findings angezeigt, Tabelle auf 250 Zeilen begrenzt.`}
 function listItem(title,body,extra=''){return `<article class="listItem"><h3>${esc(title)}</h3><p>${body}</p>${extra}</article>`}
-function renderAiTabs(){const ai=data.ai||{};document.getElementById('aiChat').innerHTML=listItem(ai.naturalLanguageRootCauseChat?.question||'Frage',esc(ai.naturalLanguageRootCauseChat?.answer||'Keine AI/KI-Antwort vorhanden.'),`<p class="muted">Finding IDs: ${(ai.naturalLanguageRootCauseChat?.supportingFindingIds||[]).map(esc).join(', ')}</p>`);document.getElementById('aiExecutive').innerHTML=listItem('Management Summary',`${esc(ai.executiveNarrative?.summary||'')}<br>${esc(ai.executiveNarrative?.riskMessage||'')}<br><b>Board Ask:</b> ${esc(ai.executiveNarrative?.boardAsk||'')}`);const plan=(ai.remediationPlanner?.weeklyPlan||[]);document.getElementById('aiPlan').innerHTML=plan.map(w=>listItem(`Week ${w.week}: ${w.focus}`,(w.actions||[]).map(a=>`<b>${esc(a.playbook)}</b> (${esc(a.findingCount)}): ${esc(a.firstAction)}`).join('<br>'))).join('')||listItem('Kein Plan','Keine Daten');document.getElementById('aiCoverage').innerHTML=[['Features',ai.metadata?.featureCount||0],['Findings',ai.metadata?.findingCount||0],['Action Groups',ai.noiseReduction?.actionableGroups||0],['Evidence Gaps',(ai.evidenceGapDetector||[]).length]].map(x=>`<div class="mini"><span class="muted">${esc(x[0])}</span><b>${esc(x[1])}</b></div>`).join('');document.getElementById('safeActions').innerHTML=(ai.safeActionClassifier||[]).map(a=>listItem(`${a.classification}: ${a.title}`,`${esc(a.why)}<br><b>Next:</b> ${esc(a.nextStep)}`)).join('')||listItem('Keine Actions','Keine Daten');document.getElementById('gxpValidation').innerHTML=(ai.gxpValidationAssistant||[]).slice(0,12).map(v=>listItem(v.findingId,`<b>Objective:</b> ${esc(v.testObjective)}<br><b>Expected:</b> ${esc(v.expectedResult)}<br><b>Deviation:</b> ${esc(v.deviationHandling)}<br><b>Approval:</b> ${esc(v.approvalPath)}`)).join('')||listItem('Keine Validierung','Keine Daten');document.getElementById('evidenceGaps').innerHTML=(ai.evidenceGapDetector||[]).map(g=>listItem(g.source,`${esc(g.reason)}<br><b>Next:</b> ${esc(g.nextCollection)}`)).join('')||listItem('Keine Evidence Gaps','Alle Pflichtquellen wurden erkannt.');document.getElementById('ticketDrafts').innerHTML=(ai.ticketAutoDrafting||[]).slice(0,12).map(t=>listItem(`${t.priority}: ${t.title}`,`${esc(t.description)}<br><b>Acceptance:</b> ${esc(t.acceptanceCriteria)}<br><b>Rollback:</b> ${esc(t.rollback)}`)).join('')||listItem('Keine Tickets','Keine Daten');document.getElementById('collectorStatus').innerHTML=(data.collectorErrors||[]).map(e=>listItem(e.source,`<span class="code">${esc(e.message)}</span>`,'')).join('')||listItem('Collector OK','Keine *.error.csv Dateien im Evidence-Ordner gefunden.')}
+function renderAiTabs(){const ai=data.ai||{};document.getElementById('aiChat').innerHTML=listItem(ai.naturalLanguageRootCauseChat?.question||'Frage',esc(ai.naturalLanguageRootCauseChat?.answer||'Keine AI/KI-Antwort vorhanden.'),`<p class="muted">Finding IDs: ${(ai.naturalLanguageRootCauseChat?.supportingFindingIds||[]).map(esc).join(', ')}</p>`);document.getElementById('aiExecutive').innerHTML=listItem('Management Summary',`${esc(ai.executiveNarrative?.summary||'')}<br>${esc(ai.executiveNarrative?.riskMessage||'')}<br><b>Board Ask:</b> ${esc(ai.executiveNarrative?.boardAsk||'')}`);const plan=(ai.remediationPlanner?.weeklyPlan||[]);document.getElementById('aiPlan').innerHTML=plan.map(w=>listItem(`Week ${w.week}: ${w.focus}`,(w.actions||[]).map(a=>`<b>${esc(a.playbook)}</b> (${esc(a.findingCount)}): ${esc(a.firstAction)}`).join('<br>'))).join('')||listItem('Kein Plan','Keine Daten');document.getElementById('aiCoverage').innerHTML=[['Features',ai.metadata?.featureCount||0],['Findings',ai.metadata?.findingCount||0],['Action Groups',ai.noiseReduction?.actionableGroups||0],['Evidence Gaps',(ai.evidenceGapDetector||[]).length]].map(x=>`<div class="mini"><span class="muted">${esc(x[0])}</span><b>${esc(x[1])}</b></div>`).join('');document.getElementById('safeActions').innerHTML=(ai.safeActionClassifier||[]).map(a=>listItem(`${a.classification}: ${a.title}`,`${esc(a.why)}<br><b>Next:</b> ${esc(a.nextStep)}`)).join('')||listItem('Keine Actions','Keine Daten');document.getElementById('gxpValidation').innerHTML=(ai.gxpValidationAssistant||[]).slice(0,12).map(v=>listItem(v.findingId,`<b>Objective:</b> ${esc(v.testObjective)}<br><b>Expected:</b> ${esc(v.expectedResult)}<br><b>Deviation:</b> ${esc(v.deviationHandling)}<br><b>Approval:</b> ${esc(v.approvalPath)}`)).join('')||listItem('Keine Validierung','Keine Daten');document.getElementById('evidenceGaps').innerHTML=(ai.evidenceGapDetector||[]).map(g=>listItem(g.source,`${esc(g.reason)}<br><b>Next:</b> ${esc(g.nextCollection)}`)).join('')||listItem('Keine Evidence Gaps','Alle Pflichtquellen wurden erkannt.');document.getElementById('ticketDrafts').innerHTML=(ai.ticketAutoDrafting||[]).slice(0,12).map(t=>listItem(`${t.priority}: ${t.title}`,`${esc(t.description)}<br><b>Acceptance:</b> ${esc(t.acceptanceCriteria)}<br><b>Rollback:</b> ${esc(t.rollback)}`)).join('')||listItem('Keine Tickets','Keine Daten');document.getElementById('collectorStatus').innerHTML=(data.collectorErrors||[]).map(e=>listItem(e.source,`<span class="code">${esc(e.message)}</span>`,'')).join('')||listItem('Collector OK','Keine *.error.csv Dateien im Evidence-Ordner gefunden.');const rp=ai.realizationPack||{};document.getElementById('realizationPack').innerHTML=[listItem('Evidence Trust Score',`Score: <b>${esc(rp.evidenceTrustScore?.score)}</b> / Grade: <b>${esc(rp.evidenceTrustScore?.grade)}</b><br>Missing: ${esc((rp.evidenceTrustScore?.missingSources||[]).join(', '))}`),listItem('Collector Fix Suggestions',`${esc((rp.collectorFixSuggestions||[]).length)} suggestions generated`),listItem('SQL 2016 Support Risk',`${esc(rp.sql2016EndOfSupportRisk?.risk)} risk; date ${esc(rp.sql2016EndOfSupportRisk?.supportRiskDate)}`),listItem('Adapter Readiness',Object.entries(rp.adapterReadiness||{}).map(([k,v])=>`<b>${esc(k)}</b>: ${esc(v.status)}`).join('<br>')),listItem('Closed-loop Governance',`${esc((rp.closedLoopGovernance||[]).length)} finding states prepared`),listItem('Dynamic SLA Contracts',`${esc((rp.dynamicSlaContracts||[]).length)} candidate contracts`) ].join('')}
+function qaFinding(){const id=document.getElementById('qaFinding').value;return data.findings.find(f=>f.id===id)||data.topFindings[0]||data.findings[0]}
+function qaAnswerFor(f,q){if(!f)return ['Keine Finding ausgewählt','Keine Daten'];const rec=f.recommendation||{}, val=f.validation||{}, risk=f.changeReadiness||{}, ax=f.axContext||{};if(q==='next')return ['Nächster sicherer Schritt',`${esc(rec.summary||'Finding prüfen.')}<br><br><b>Sicherheitsgrenze:</b> Keine PROD-Änderung direkt aus dem Dashboard. Erst Evidence sichern, TEST messen, dann Approval.`];if(q==='test')return ['TEST-Vorgehen',`1. Vergleichbare TEST-Daten und Zeitfenster herstellen.<br>2. Baseline messen: ${esc(val.baselineWindow||'aktuelles Evidence-Fenster')}.<br>3. Maßnahme nur in TEST durchführen.<br>4. Erfolgskriterium: ${esc(val.successMetric||'Vorher/Nachher verbessern ohne Regression')}.<br>5. Ergebnis als Evidence Pack sichern.`];if(q==='risk')return ['Umsetzungsrisiko',`<b>Technical:</b> ${esc(risk.technicalRisk||'medium')}<br><b>AX Compatibility:</b> ${esc(risk.axCompatibilityRisk||'medium')}<br><b>Downtime:</b> ${esc(risk.downtimeRisk||'low')}<br><b>Rollback:</b> ${esc(risk.rollbackComplexity||'medium')}<br><b>Betroffene Module:</b> ${esc(ax.module||'Unknown')}`];if(q==='approval')return ['Approval',`<b>Approval Path:</b> ${esc(risk.approvalPath||'Review')}<br><b>Requires Approval:</b> ${esc(rec.requiresApproval!==false)}<br><b>Owner:</b> ${esc(rec.owner||ax.technicalOwner||'AX Operations')}<br><b>GxP Hinweis:</b> Bei produktionsnaher Änderung Test Evidence, Approval, Rollback und Post-Change-Messung anhängen.`];if(q==='rollback')return ['Rollback',`${esc(val.rollback||'Änderung über Change Control zurücknehmen.')}<br><br>Vor Umsetzung muss klar sein, welche SQL/AX/Batch-Konfiguration geändert wurde und wie der Ausgangszustand wiederhergestellt wird.`];return ['Fehlende Evidence',`Direkte Evidence im Finding: ${(f.evidence||[]).map(e=>esc(e.source+':'+e.metric)).join(', ')||'keine'}<br><br>Globale Gaps: ${(data.ai?.evidenceGapDetector||[]).map(g=>esc(g.source)).join(', ')||'keine'}.`]}
+function renderQa(){const f=qaFinding();const q=document.getElementById('qaQuestion').value;const [title,body]=qaAnswerFor(f,q);document.getElementById('qaAnswer').innerHTML=listItem(`${title}: ${f?.id||''}`,`<b>${esc(f?.title||'')}</b><br><br>${body}`)}
+function initQa(){const sel=document.getElementById('qaFinding');sel.innerHTML=(data.topFindings||data.findings).slice(0,40).map(f=>`<option value="${esc(f.id)}">${esc(f.severity)} | ${esc(f.id)} | ${esc(f.title).slice(0,100)}</option>`).join('');document.getElementById('qaFinding').addEventListener('input',renderQa);document.getElementById('qaQuestion').addEventListener('input',renderQa);renderQa()}
+function renderAdmin(){const plan=data.adminExecution||{};const rows=(plan.actions||[]).slice(0,20).map(a=>listItem(`${a.status}: ${a.findingId}`,`<b>${esc(a.title)}</b><br>Action: ${esc(a.actionType)}<br>Environment: ${esc(a.environment)}<br>Token: <span class="code">${esc(a.confirmationToken)}</span><br>Script: <span class="code">${esc(a.script)}</span><br>Gates: ${Object.entries(a.gates||{}).map(([k,v])=>`${esc(k)}=${esc(v)}`).join(', ')}`)).join('');document.getElementById('adminExecution').innerHTML=[listItem('Policy Mode',`Mode: <b>${esc(plan.mode)}</b><br>Environment: <b>${esc(plan.environment)}</b><br>Actions: ${esc(plan.actionCount)}<br>Executable after gates: ${esc(plan.executableCount)}<br><br>Execution is not performed by the dashboard. Admin reviews the generated script, approval, token, rollback, and validation before any database/tool execution.`),rows].join('')}
 function initTabs(){document.querySelectorAll('.tabBtn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tabPanel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+btn.dataset.tab).classList.add('active')}))}
-function init(){const score=data.riskScore||0;document.getElementById('score').textContent=score;const ring=document.getElementById('scoreRing');ring.style.setProperty('--pct',score);ring.style.setProperty('--color',score>=75?'var(--green)':score>=50?'var(--amber)':'var(--red)');document.getElementById('generated').textContent='Generated: '+new Date().toLocaleString();renderKpis();severityDonut();bars('causes',data.causes.slice(0,10).map(c=>({name:c.rootCause||c.name||'Unknown',value:c.count||c.value||0})),'#2563eb');bars('modules',data.modules,'#0891b2');bars('playbooks',data.playbooks,'#6d28d9');fillSelect('module',data.modules);fillSelect('playbook',data.playbooks);renderTop();renderAiTabs();initTabs();['q','sev','module','playbook'].forEach(id=>document.getElementById(id).addEventListener('input',renderRows));renderRows()}
+function init(){const score=data.riskScore||0;document.getElementById('score').textContent=score;const ring=document.getElementById('scoreRing');ring.style.setProperty('--pct',score);ring.style.setProperty('--color',score>=75?'var(--green)':score>=50?'var(--amber)':'var(--red)');document.getElementById('generated').textContent='Generated: '+new Date().toLocaleString();renderKpis();severityDonut();bars('causes',data.rootCauseBars||[],'#2563eb');bars('modules',data.modules,'#0891b2');bars('playbooks',data.playbooks,'#6d28d9');fillSelect('module',data.modules);fillSelect('playbook',data.playbooks);renderTop();renderAiTabs();initQa();renderAdmin();initTabs();['q','sev','module','playbook'].forEach(id=>document.getElementById(id).addEventListener('input',renderRows));renderRows()}
 init();
 </script>
 </body>

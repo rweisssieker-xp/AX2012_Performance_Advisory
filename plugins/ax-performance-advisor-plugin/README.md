@@ -466,6 +466,8 @@ The interactive HTML dashboard embeds this AI/KI pack in dedicated tabs for advi
 
 Release and local test instructions are documented in `docs/release-runbook.md`. Additional future differentiation ideas are tracked in `docs/future-ai-usps.md`.
 
+Admin Execution Mode is documented in `docs/admin-execution-mode.md`. It generates guarded preview scripts, confirmation tokens, and audit records for approved admins without executing production changes from the dashboard.
+
 ## Planned Extensions
 
 - AX rule-library files for table families, workload windows, and anti-patterns.

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from axpa_core import analyze_evidence, module_health_scores, summarize_root_causes, write_json
+from realization_pack import generate_realization_pack
 
 
 SEVERITY_POINTS = {"critical": 5, "high": 4, "medium": 2, "low": 1, "informational": 0}
@@ -347,6 +348,7 @@ def generate_ai_insights(evidence: str | Path, question: str = "") -> dict[str, 
         "safeActionClassifier": safe_actions,
         "moduleHealthScores": module_scores,
         "rootCauseGroups": root_causes,
+        "realizationPack": generate_realization_pack(evidence),
     }
     return result
 

@@ -1,0 +1,23 @@
+{
+  "version": "0.1.0",
+  "defaultMode": "preview-only",
+  "allowedEnvironments": ["TEST", "PREPROD"],
+  "prodRequiresSecondConfirmation": true,
+  "requireEvidencePack": true,
+  "requireRollback": true,
+  "requireApprovalReference": true,
+  "allowedActionTypes": [
+    "update-statistics-review",
+    "index-maintenance-review",
+    "batch-schedule-review",
+    "query-store-review",
+    "collector-rerun",
+    "post-change-validation"
+  ],
+  "blockedActionTypes": [
+    "direct-prod-index-create",
+    "direct-xpp-deploy",
+    "global-sql-server-setting-change",
+    "unreviewed-ax-config-change"
+  ]
+}

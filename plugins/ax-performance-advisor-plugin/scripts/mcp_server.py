@@ -15,6 +15,7 @@ from axpa_core import (
     write_json,
 )
 from ai_insights import generate_ai_insights
+from admin_execution import build_execution_plan
 
 
 TOOLS = [
@@ -90,6 +91,22 @@ TOOLS = [
         },
     },
     {
+        "name": "generate_admin_execution_plan",
+        "description": "Generate guarded admin execution preview scripts with policy gates and confirmation tokens.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "evidence": {"type": "string"},
+                "outputDir": {"type": "string"},
+                "environment": {"type": "string"},
+                "minimumSeverity": {"type": "string"},
+                "approvalReference": {"type": "string"},
+                "confirmToken": {"type": "string"},
+            },
+            "required": ["evidence", "outputDir"],
+        },
+    },
+    {
         "name": "run_script",
         "description": "Run an allowlisted AXPA Python script by name with arguments.",
         "inputSchema": {
@@ -153,6 +170,16 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
         payload = generate_ai_insights(args["evidence"], args.get("question", ""))
         write_json(Path(args["output"]), payload)
         return content({"output": args["output"], "features": payload["metadata"]["featureCount"], "findings": payload["metadata"]["findingCount"]})
+    if name == "generate_admin_execution_plan":
+        result = build_execution_plan(
+            args["evidence"],
+            args["outputDir"],
+            args.get("environment", "TEST"),
+            args.get("minimumSeverity", "high"),
+            args.get("approvalReference", ""),
+            args.get("confirmToken", ""),
+        )
+        return content({"output": str(Path(args["outputDir"]) / "admin-execution-plan.json"), "actions": result["actionCount"], "executable": result["executableCount"]})
     if name == "run_script":
         script = args["script"]
         if script not in ALLOWED_SCRIPTS:

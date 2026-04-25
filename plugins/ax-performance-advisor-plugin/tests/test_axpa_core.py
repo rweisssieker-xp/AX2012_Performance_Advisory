@@ -12,6 +12,8 @@ sys.path.insert(0, str(SCRIPTS))
 
 from axpa_core import analyze_evidence, build_report, compare_baseline, export_evidence_pack, export_powerbi_dataset
 from ai_insights import AI_FEATURES, generate_ai_insights, render_markdown
+from realization_pack import generate_realization_pack
+from admin_execution import build_execution_plan
 from mcp_server import handle
 
 
@@ -131,6 +133,31 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertTrue(output.exists())
         payload = json.loads(output.read_text(encoding="utf-8"))
         self.assertEqual(payload["metadata"]["featureCount"], 20)
+
+    def test_realization_pack_closes_prepared_features(self) -> None:
+        payload = generate_realization_pack(self.evidence)
+        self.assertIn("evidenceTrustScore", payload)
+        self.assertIn("collectorFixSuggestions", payload)
+        self.assertIn("roleBasedBriefings", payload)
+        self.assertIn("dynamicSlaContracts", payload)
+        self.assertIn("syntheticLoadReplayPlan", payload)
+        self.assertIn("closedLoopGovernance", payload)
+        self.assertIn("adapterReadiness", payload)
+        self.assertIn("sql2016EndOfSupportRisk", payload)
+        self.assertGreaterEqual(payload["evidenceTrustScore"]["score"], 0)
+        self.assertIn("llmChat", payload["adapterReadiness"])
+
+    def test_admin_execution_plan_is_guarded_preview(self) -> None:
+        out = self.tmp / "admin"
+        payload = build_execution_plan(self.evidence, out, "TEST", "high")
+        self.assertGreater(payload["actionCount"], 0)
+        self.assertEqual(payload["executableCount"], 0)
+        self.assertTrue((out / "admin-execution-plan.json").exists())
+        self.assertTrue((out / "audit" / "admin-execution-audit.json").exists())
+        first = payload["actions"][0]
+        self.assertEqual(first["status"], "preview-only")
+        self.assertIn("confirmationToken", first)
+        self.assertTrue(Path(first["script"]).exists())
 
 
 if __name__ == "__main__":
