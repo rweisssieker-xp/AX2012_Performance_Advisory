@@ -14,6 +14,13 @@ from axpa_core import analyze_evidence, build_report, compare_baseline, export_e
 from ai_insights import AI_FEATURES, generate_ai_insights, render_markdown
 from realization_pack import generate_realization_pack
 from admin_execution import build_execution_plan
+from enterprise_observability import generate_enterprise_pack
+from rag_qa import build_index, answer
+from advanced_usps import generate_advanced_usps
+from governance_extensions import generate_governance_extensions
+from strategy_extensions import generate_strategy_extensions
+from ai_ki_extensions import generate_ai_ki_extensions
+from market_differentiators import generate_market_differentiators
 from mcp_server import handle
 
 
@@ -158,6 +165,73 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertEqual(first["status"], "preview-only")
         self.assertIn("confirmationToken", first)
         self.assertTrue(Path(first["script"]).exists())
+
+    def test_enterprise_observability_pack_outputs_platform_features(self) -> None:
+        out = self.tmp / "enterprise"
+        payload = generate_enterprise_pack(self.evidence, out, [str(self.evidence)])
+        self.assertIn("timeSeriesStore", payload)
+        self.assertIn("alerts", payload)
+        self.assertIn("estateInventory", payload)
+        self.assertIn("planRepository", payload)
+        self.assertIn("notifications", payload)
+        self.assertTrue((out / "axpa-trends.sqlite").exists())
+        self.assertTrue((out / "enterprise-observability-pack.json").exists())
+        self.assertTrue((out / "notifications" / "teams-card.json").exists())
+
+    def test_local_rag_qa_returns_sources(self) -> None:
+        index = build_index(self.evidence)
+        result = answer(index, "blocking batch query")
+        self.assertGreater(index["docCount"], 0)
+        self.assertIn("sources", result)
+
+    def test_advanced_usps_generate_operational_pack(self) -> None:
+        payload = generate_advanced_usps(self.evidence)
+        self.assertIn("sloBurnRate", payload)
+        self.assertIn("maintenanceWindowOptimizer", payload)
+        self.assertIn("costOfDelay", payload)
+        self.assertIn("releaseGate", payload)
+        self.assertIn("retentionCandidates", payload)
+        self.assertIn("knownIssueMatches", payload)
+        self.assertIn("executiveBriefings", payload)
+
+    def test_governance_extensions_generate_audit_outputs(self) -> None:
+        out = self.tmp / "governance"
+        payload = generate_governance_extensions(self.evidence, out)
+        self.assertIn("runbookAutomation", payload)
+        self.assertIn("raciMatrix", payload)
+        self.assertIn("businessImpactTimeline", payload)
+        self.assertIn("suppressionGovernance", payload)
+        self.assertIn("dataQualityChecks", payload)
+        self.assertTrue(Path(payload["auditExport"]["csv"]).exists())
+
+    def test_strategy_extensions_generate_decision_views(self) -> None:
+        payload = generate_strategy_extensions(self.evidence)
+        self.assertIn("whatIfSimulation", payload)
+        self.assertIn("baselineBenchmark", payload)
+        self.assertIn("evidenceCompletenessRoadmap", payload)
+        self.assertIn("remediationKanban", payload)
+        self.assertIn("kpiContracts", payload)
+        self.assertIn("capabilityMatrix", payload)
+
+    def test_ai_ki_extensions_generate_context_artifacts(self) -> None:
+        payload = generate_ai_ki_extensions(self.evidence)
+        self.assertIn("hypothesisRanking", payload)
+        self.assertIn("counterfactuals", payload)
+        self.assertIn("causalNarrative", payload)
+        self.assertIn("llmContextPack", payload)
+        self.assertIn("evidenceChunks", payload)
+        self.assertIn("confidenceCalibration", payload)
+        self.assertGreater(len(payload["evidenceChunks"]), 0)
+
+    def test_market_differentiators_generate_more_usps(self) -> None:
+        payload = generate_market_differentiators(self.evidence)
+        self.assertIn("vendorNeutralComparison", payload)
+        self.assertIn("migrationReadiness", payload)
+        self.assertIn("resilienceScore", payload)
+        self.assertIn("knowledgeGraph", payload)
+        self.assertIn("processOwnerScorecards", payload)
+        self.assertIn("evidenceMarketplace", payload)
+        self.assertIn("valueRealization", payload)
 
 
 if __name__ == "__main__":

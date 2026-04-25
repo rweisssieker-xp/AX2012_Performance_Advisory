@@ -1,0 +1,8 @@
+{
+  "provider": "openai-compatible",
+  "endpointEnv": "AXPA_LLM_ENDPOINT",
+  "apiKeyEnv": "AXPA_LLM_API_KEY",
+  "modelEnv": "AXPA_LLM_MODEL",
+  "defaultModel": "gpt-4.1-mini",
+  "mode": "disabled-until-configured"
+}

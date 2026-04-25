@@ -5,6 +5,12 @@ from pathlib import Path
 
 from ai_insights import generate_ai_insights
 from admin_execution import build_execution_plan
+from enterprise_observability import generate_enterprise_pack
+from advanced_usps import generate_advanced_usps
+from governance_extensions import generate_governance_extensions
+from strategy_extensions import generate_strategy_extensions
+from ai_ki_extensions import generate_ai_ki_extensions
+from market_differentiators import generate_market_differentiators
 from axpa_core import analyze_evidence, module_health_scores, summarize_root_causes
 
 
@@ -115,6 +121,12 @@ def main() -> int:
     findings = analyze_evidence(args.evidence)
     ai = generate_ai_insights(args.evidence, "Warum war AX langsam?")
     admin_plan = build_execution_plan(args.evidence, Path(args.output).parent / "admin-execution", "TEST", "high")
+    enterprise_pack = generate_enterprise_pack(args.evidence, Path(args.output).parent / "enterprise-observability", [args.evidence])
+    advanced = generate_advanced_usps(args.evidence)
+    governance = generate_governance_extensions(args.evidence, Path(args.output).parent / "governance")
+    strategy = generate_strategy_extensions(args.evidence)
+    ai_ki = generate_ai_ki_extensions(args.evidence)
+    market = generate_market_differentiators(args.evidence)
     scores = module_health_scores(findings)
     causes = summarize_root_causes(findings)
     severity = _counts(findings, lambda f: f.get("severity"))
@@ -136,6 +148,12 @@ def main() -> int:
             "collectorErrors": _collector_errors(args.evidence),
             "ai": ai,
             "adminExecution": admin_plan,
+            "enterprise": enterprise_pack,
+            "advanced": advanced,
+            "governance": governance,
+            "strategy": strategy,
+            "aiKi": ai_ki,
+            "market": market,
         },
         ensure_ascii=False,
     )
@@ -225,6 +243,12 @@ input,select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:9px 1
     <button class="tabBtn" data-tab="real">Realization Pack</button>
     <button class="tabBtn" data-tab="qa">Implementation Q&A</button>
     <button class="tabBtn" data-tab="admin">Admin Execution</button>
+    <button class="tabBtn" data-tab="enterprise">Enterprise Observability</button>
+    <button class="tabBtn" data-tab="advanced">Advanced USPs</button>
+    <button class="tabBtn" data-tab="governance">Governance</button>
+    <button class="tabBtn" data-tab="strategy">Strategy</button>
+    <button class="tabBtn" data-tab="aiki">More AI/KI</button>
+    <button class="tabBtn" data-tab="market">More USPs</button>
   </section>
 
   <section class="tabPanel active" id="tab-ai">
@@ -277,6 +301,42 @@ input,select{width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:9px 1
       <div class="list" id="adminExecution"></div>
     </div>
   </section>
+  <section class="tabPanel" id="tab-enterprise">
+    <div class="panel">
+      <h2>Enterprise Observability</h2>
+      <div class="list" id="enterprisePack"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-advanced">
+    <div class="panel">
+      <h2>Advanced USPs</h2>
+      <div class="list" id="advancedUsps"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-governance">
+    <div class="panel">
+      <h2>Governance Extensions</h2>
+      <div class="list" id="governanceExtensions"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-strategy">
+    <div class="panel">
+      <h2>Strategy Extensions</h2>
+      <div class="list" id="strategyExtensions"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-aiki">
+    <div class="panel">
+      <h2>More AI/KI</h2>
+      <div class="list" id="aiKiExtensions"></div>
+    </div>
+  </section>
+  <section class="tabPanel" id="tab-market">
+    <div class="panel">
+      <h2>More USPs</h2>
+      <div class="list" id="marketDifferentiators"></div>
+    </div>
+  </section>
 
   <section class="filters">
     <input id="q" placeholder="Suchen nach Tabelle, Wait, Batch, Empfehlung...">
@@ -313,8 +373,14 @@ function qaAnswerFor(f,q){if(!f)return ['Keine Finding ausgewählt','Keine Daten
 function renderQa(){const f=qaFinding();const q=document.getElementById('qaQuestion').value;const [title,body]=qaAnswerFor(f,q);document.getElementById('qaAnswer').innerHTML=listItem(`${title}: ${f?.id||''}`,`<b>${esc(f?.title||'')}</b><br><br>${body}`)}
 function initQa(){const sel=document.getElementById('qaFinding');sel.innerHTML=(data.topFindings||data.findings).slice(0,40).map(f=>`<option value="${esc(f.id)}">${esc(f.severity)} | ${esc(f.id)} | ${esc(f.title).slice(0,100)}</option>`).join('');document.getElementById('qaFinding').addEventListener('input',renderQa);document.getElementById('qaQuestion').addEventListener('input',renderQa);renderQa()}
 function renderAdmin(){const plan=data.adminExecution||{};const rows=(plan.actions||[]).slice(0,20).map(a=>listItem(`${a.status}: ${a.findingId}`,`<b>${esc(a.title)}</b><br>Action: ${esc(a.actionType)}<br>Environment: ${esc(a.environment)}<br>Token: <span class="code">${esc(a.confirmationToken)}</span><br>Script: <span class="code">${esc(a.script)}</span><br>Gates: ${Object.entries(a.gates||{}).map(([k,v])=>`${esc(k)}=${esc(v)}`).join(', ')}`)).join('');document.getElementById('adminExecution').innerHTML=[listItem('Policy Mode',`Mode: <b>${esc(plan.mode)}</b><br>Environment: <b>${esc(plan.environment)}</b><br>Actions: ${esc(plan.actionCount)}<br>Executable after gates: ${esc(plan.executableCount)}<br><br>Execution is not performed by the dashboard. Admin reviews the generated script, approval, token, rollback, and validation before any database/tool execution.`),rows].join('')}
+function renderEnterprise(){const e=data.enterprise||{};document.getElementById('enterprisePack').innerHTML=[listItem('Time-Series Store',`DB: <span class="code">${esc(e.timeSeriesStore?.db)}</span><br>Run: ${esc(e.timeSeriesStore?.runId)}<br>Findings: ${esc(e.timeSeriesStore?.findings)}<br>Health: ${esc(e.timeSeriesStore?.healthScore)}`),listItem('Alerts',`Alerts: <b>${esc(e.alerts?.alertCount)}</b><br>${(e.alerts?.alerts||[]).slice(0,8).map(a=>`${esc(a.severity)}: ${esc(a.title)} -> ${esc(a.route)}`).join('<br>')}`),listItem('Estate Inventory',`Environments: ${esc(e.estateInventory?.environmentCount)}<br>${(e.estateInventory?.environments||[]).map(x=>`${esc(x.name)}: ${esc(x.findingCount)} findings`).join('<br>')}`),listItem('Plan Repository',`Entries: ${esc(e.planRepository?.entryCount)}<br>Query families: ${esc(e.planRepository?.queryFamilies)}<br>Regression candidates: ${esc((e.planRepository?.regressionCandidates||[]).length)}`),listItem('Notification Payloads',`Teams: <span class="code">${esc(e.notifications?.teams)}</span><br>ServiceNow: <span class="code">${esc(e.notifications?.serviceNow)}</span><br>PagerDuty: <span class="code">${esc(e.notifications?.pagerDuty)}</span>`),listItem('Competitive Coverage',`${(e.competitorCoverage?.covered||[]).map(esc).join('<br>')}`)].join('')}
+function renderAdvanced(){const a=data.advanced||{};document.getElementById('advancedUsps').innerHTML=[listItem('SLO Burn Rate',`SLOs: ${esc(a.sloBurnRate?.sloCount)}<br>${(a.sloBurnRate?.items||[]).slice(0,8).map(x=>`${esc(x.status)}: ${esc(x.slo)} burn=${esc(x.burnRate)}`).join('<br>')}`),listItem('Maintenance Window Optimizer',`${(a.maintenanceWindowOptimizer?.sequence||[]).map(x=>`${esc(x.window)} ${esc(x.playbook)} (${esc(x.findingCount)})`).join('<br>')}`),listItem('Cost Of Delay',`Daily risk points: <b>${esc(a.costOfDelay?.totalDailyRiskPoints)}</b><br>${(a.costOfDelay?.items||[]).slice(0,6).map(x=>`${esc(x.findingId)}: ${esc(x.dailyRiskPoints)}`).join('<br>')}`),listItem('Release Gate',`Status: <b>${esc(a.releaseGate?.status)}</b><br>Blockers: ${esc(a.releaseGate?.blockerCount)}`),listItem('Retention Candidates',`Candidates: ${esc(a.retentionCandidates?.candidateCount)}<br>${(a.retentionCandidates?.candidates||[]).slice(0,8).map(x=>`${esc(x.table)} (${esc(x.signals)})`).join('<br>')}`),listItem('Known Issue Matches',`Matches: ${esc(a.knownIssueMatches?.matchCount)}<br>${(a.knownIssueMatches?.matches||[]).slice(0,8).map(x=>`${esc(x.knownIssueId)} -> ${esc(x.findingId)}`).join('<br>')}`),listItem('Executive Briefing',`${esc(a.executiveBriefings?.oneMinute)}<br><b>Ask:</b> ${esc(a.executiveBriefings?.decisionAsk)}<br><b>Risk:</b> ${esc(a.executiveBriefings?.riskIfDeferred)}`)].join('')}
+function renderGovernance(){const g=data.governance||{};document.getElementById('governanceExtensions').innerHTML=[listItem('Runbook Automation',`${(g.runbookAutomation||[]).slice(0,5).map(x=>`${esc(x.findingId)}: ${esc(x.playbook)}`).join('<br>')}`),listItem('RACI Matrix',`${(g.raciMatrix||[]).map(x=>`${esc(x.owner)}: ${esc(x.findingCount)} findings, high=${esc(x.highCount)}`).join('<br>')}`),listItem('Business Impact Timeline',`${(g.businessImpactTimeline||[]).map(x=>`${esc(x.window)}: ${esc(x.findingCount)} findings, high=${esc(x.highCount)}`).join('<br>')}`),listItem('Suppression Governance',`${(g.suppressionGovernance||[]).slice(0,8).map(x=>`${esc(x.scope)} (${esc(x.findingCount)}) expiry=${esc(x.expiry)}`).join('<br>')}`),listItem('Data Quality Checks',`Score: <b>${esc(g.dataQualityChecks?.score)}</b><br>Empty files: ${(g.dataQualityChecks?.emptyFiles||[]).map(esc).join(', ')}<br>Collector errors: ${(g.dataQualityChecks?.collectorErrors||[]).map(esc).join(', ')}`),listItem('Audit Export',`CSV: <span class="code">${esc(g.auditExport?.csv)}</span><br>JSON: <span class="code">${esc(g.auditExport?.json)}</span><br>Rows: ${esc(g.auditExport?.rows)}`)].join('')}
+function renderStrategy(){const s=data.strategy||{};document.getElementById('strategyExtensions').innerHTML=[listItem('What-if Simulation',`${(s.whatIfSimulation?.scenarios||[]).slice(0,8).map(x=>`${esc(x.scenario)}: ${esc(x.riskReductionPercent)}% reduction estimate`).join('<br>')}`),listItem('Baseline Benchmark',`Health: <b>${esc(s.baselineBenchmark?.healthScore)}</b><br>${esc(s.baselineBenchmark?.benchmarkInterpretation)}`),listItem('Evidence Completeness Roadmap',`${(s.evidenceCompletenessRoadmap?.sources||[]).map(x=>`${esc(x.present?'done':'missing')}: ${esc(x.source)} - ${esc(x.value)}`).join('<br>')}`),listItem('Remediation Kanban',`Now: ${esc((s.remediationKanban?.Now||[]).length)}<br>Next: ${esc((s.remediationKanban?.Next||[]).length)}<br>Later: ${esc((s.remediationKanban?.Later||[]).length)}<br>Waiting Evidence: ${esc((s.remediationKanban?.['Waiting Evidence']||[]).length)}`),listItem('KPI Contracts',`${(s.kpiContracts||[]).slice(0,8).map(x=>`${esc(x.kpi)} current=${esc(x.current)} target=${esc(x.target)}`).join('<br>')}`),listItem('Capability Matrix',`${(s.capabilityMatrix||[]).map(x=>`${esc(x.status)}: ${esc(x.capability)} - ${esc(x.differentiator)}`).join('<br>')}`)].join('')}
+function renderAiKi(){const k=data.aiKi||{};document.getElementById('aiKiExtensions').innerHTML=[listItem('Hypothesis Ranking',`${(k.hypothesisRanking||[]).slice(0,8).map(x=>`${esc(x.hypothesis)} score=${esc(x.score)} confidence=${esc(x.confidence)}`).join('<br>')}`),listItem('Counterfactuals',`${(k.counterfactuals||[]).slice(0,5).map(x=>`${esc(x.findingId)}: ${esc(x.ifWeValidateInTest)}`).join('<br>')}`),listItem('Causal Narrative',`${esc(k.causalNarrative?.summary)}<br>${(k.causalNarrative?.chain||[]).map(x=>`${esc(x.cause)} -> ${esc(x.effect)}`).join('<br>')}`),listItem('LLM Context Pack',`Context findings: ${esc((k.llmContextPack?.contextFindings||[]).length)}<br>Policy: ${esc(k.llmContextPack?.sourcePolicy)}<br><span class="code">${esc((k.llmContextPack?.systemPrompt||'').slice(0,300))}</span>`),listItem('Evidence Chunks',`Chunks: ${esc((k.evidenceChunks||[]).length)}<br>${(k.evidenceChunks||[]).slice(0,3).map(x=>`${esc(x.id)}: ${esc(x.text).slice(0,180)}`).join('<br>')}`),listItem('Confidence Calibration',`${Object.entries(k.confidenceCalibration?.summary||{}).map(([a,b])=>`${esc(a)}=${esc(b)}`).join('<br>')}`)].join('')}
+function renderMarket(){const m=data.market||{};document.getElementById('marketDifferentiators').innerHTML=[listItem('Vendor-neutral Positioning',`${esc(m.vendorNeutralComparison?.positioning)}<br><b>AXPA:</b> ${(m.vendorNeutralComparison?.axpaStrength||[]).map(esc).join(', ')}`),listItem('Migration Readiness',`Score: <b>${esc(m.migrationReadiness?.readinessScore)}</b><br>Signals: ${esc(m.migrationReadiness?.signalCount)}<br>${esc(m.migrationReadiness?.recommendation)}`),listItem('Resilience Score',`Score: <b>${esc(m.resilienceScore?.score)}</b><br>High: ${esc(m.resilienceScore?.highFindings)} Debt: ${esc(m.resilienceScore?.debtItems)} Approval: ${esc(m.resilienceScore?.approvalItems)}`),listItem('Knowledge Graph',`Nodes: ${esc(m.knowledgeGraph?.nodeCount)}<br>Edges: ${esc(m.knowledgeGraph?.edgeCount)}`),listItem('Process Owner Scorecards',`${(m.processOwnerScorecards||[]).slice(0,8).map(x=>`${esc(x.owner)} score=${esc(x.score)} findings=${esc(x.findingCount)} high=${esc(x.highCount)}`).join('<br>')}`),listItem('Evidence Marketplace',`${(m.evidenceMarketplace||[]).map(x=>`${esc(x.evidence)}: ${esc(x.value)}`).join('<br>')}`),listItem('Value Realization',`Opportunities: ${esc(m.valueRealization?.opportunityCount)}<br>${(m.valueRealization?.opportunities||[]).slice(0,8).map(x=>`${esc(x.initiative)} (${esc(x.findingCount)})`).join('<br>')}`)].join('')}
 function initTabs(){document.querySelectorAll('.tabBtn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tabPanel').forEach(p=>p.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+btn.dataset.tab).classList.add('active')}))}
-function init(){const score=data.riskScore||0;document.getElementById('score').textContent=score;const ring=document.getElementById('scoreRing');ring.style.setProperty('--pct',score);ring.style.setProperty('--color',score>=75?'var(--green)':score>=50?'var(--amber)':'var(--red)');document.getElementById('generated').textContent='Generated: '+new Date().toLocaleString();renderKpis();severityDonut();bars('causes',data.rootCauseBars||[],'#2563eb');bars('modules',data.modules,'#0891b2');bars('playbooks',data.playbooks,'#6d28d9');fillSelect('module',data.modules);fillSelect('playbook',data.playbooks);renderTop();renderAiTabs();initQa();renderAdmin();initTabs();['q','sev','module','playbook'].forEach(id=>document.getElementById(id).addEventListener('input',renderRows));renderRows()}
+function init(){const score=data.riskScore||0;document.getElementById('score').textContent=score;const ring=document.getElementById('scoreRing');ring.style.setProperty('--pct',score);ring.style.setProperty('--color',score>=75?'var(--green)':score>=50?'var(--amber)':'var(--red)');document.getElementById('generated').textContent='Generated: '+new Date().toLocaleString();renderKpis();severityDonut();bars('causes',data.rootCauseBars||[],'#2563eb');bars('modules',data.modules,'#0891b2');bars('playbooks',data.playbooks,'#6d28d9');fillSelect('module',data.modules);fillSelect('playbook',data.playbooks);renderTop();renderAiTabs();initQa();renderAdmin();renderEnterprise();renderAdvanced();renderGovernance();renderStrategy();renderAiKi();renderMarket();initTabs();['q','sev','module','playbook'].forEach(id=>document.getElementById(id).addEventListener('input',renderRows));renderRows()}
 init();
 </script>
 </body>

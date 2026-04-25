@@ -16,6 +16,7 @@ from axpa_core import (
 )
 from ai_insights import generate_ai_insights
 from admin_execution import build_execution_plan
+from enterprise_observability import generate_enterprise_pack
 
 
 TOOLS = [
@@ -107,6 +108,19 @@ TOOLS = [
         },
     },
     {
+        "name": "generate_enterprise_observability_pack",
+        "description": "Generate time-series, alerts, estate inventory, plan repository, and notification payloads.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "evidence": {"type": "string"},
+                "outputDir": {"type": "string"},
+                "estate": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["evidence", "outputDir"],
+        },
+    },
+    {
         "name": "run_script",
         "description": "Run an allowlisted AXPA Python script by name with arguments.",
         "inputSchema": {
@@ -180,6 +194,9 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             args.get("confirmToken", ""),
         )
         return content({"output": str(Path(args["outputDir"]) / "admin-execution-plan.json"), "actions": result["actionCount"], "executable": result["executableCount"]})
+    if name == "generate_enterprise_observability_pack":
+        result = generate_enterprise_pack(args["evidence"], args["outputDir"], args.get("estate"))
+        return content({"output": str(Path(args["outputDir"]) / "enterprise-observability-pack.json"), "alerts": result["alerts"]["alertCount"], "environments": result["estateInventory"]["environmentCount"]})
     if name == "run_script":
         script = args["script"]
         if script not in ALLOWED_SCRIPTS:

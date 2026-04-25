@@ -1,0 +1,11 @@
+{
+  "defaultRole": "viewer",
+  "roles": {
+    "viewer": ["dashboard:read", "report:read"],
+    "dba": ["dashboard:read", "report:read", "sql:review", "admin-preview:read"],
+    "ax-admin": ["dashboard:read", "report:read", "batch:review", "admin-preview:read"],
+    "qa-gxp": ["dashboard:read", "evidence:read", "validation:read", "audit:read"],
+    "cio": ["dashboard:read", "executive:read"],
+    "admin": ["*"]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "host": "127.0.0.1",
+  "port": 18765,
+  "dashboard": "plugins/ax-performance-advisor-plugin/out/IT-TEST-ERP4CU-dashboard.html",
+  "auditLog": "plugins/ax-performance-advisor-plugin/out/web-portal-audit.log",
+  "tokens": {
+    "viewer-token": "viewer",
+    "dba-token": "dba",
+    "admin-token": "admin"
+  }
+}

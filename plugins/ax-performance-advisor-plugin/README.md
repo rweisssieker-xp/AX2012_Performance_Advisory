@@ -468,6 +468,22 @@ Release and local test instructions are documented in `docs/release-runbook.md`.
 
 Admin Execution Mode is documented in `docs/admin-execution-mode.md`. It generates guarded preview scripts, confirmation tokens, and audit records for approved admins without executing production changes from the dashboard.
 
+Enterprise Observability is documented in `docs/enterprise-observability.md`. It adds time-series storage, alerts, estate inventory, query/plan repository, and notification payload exports.
+
+Optional agent, RBAC portal, local RAG/Q&A, X++ attribution, and release packaging are documented in `docs/optional-agent-rbac-rag-release.md`. The agent remains optional and is not required to install or run the plugin.
+
+Advanced operational USPs are documented in `docs/advanced-usps.md`, including SLO burn rate, maintenance-window sequencing, cost of delay, release gates, retention candidates, known-issue matching, and executive briefings.
+
+Governance extensions are documented in `docs/governance-extensions.md`, including runbook automation, RACI, business impact timeline, suppression governance, data quality checks, and audit exports.
+
+Strategy extensions are documented in `docs/strategy-extensions.md`, including what-if simulation, baseline benchmark, evidence roadmap, remediation Kanban, KPI contracts, and capability matrix.
+
+Additional AI/KI extensions are documented in `docs/ai-ki-extensions.md`, including hypothesis ranking, counterfactuals, causal narrative, LLM context packs, evidence chunks, and confidence calibration.
+
+Market differentiator USPs are documented in `docs/market-differentiators.md`, including vendor-neutral comparison, migration readiness, resilience score, knowledge graph, process owner scorecards, evidence marketplace, and value realization.
+
+The local RBAC web portal and LLM connector are documented in `docs/web-portal-and-llm.md`.
+
 ## Planned Extensions
 
 - AX rule-library files for table families, workload windows, and anti-patterns.

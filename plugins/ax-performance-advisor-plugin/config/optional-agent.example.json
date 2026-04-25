@@ -1,0 +1,8 @@
+{
+  "enabled": false,
+  "evidence": "plugins/ax-performance-advisor-plugin/evidence/IT-TEST-ERP4CU",
+  "output": "plugins/ax-performance-advisor-plugin/out/agent",
+  "intervalSeconds": 3600,
+  "commandTimeoutSeconds": 300,
+  "logPath": "plugins/ax-performance-advisor-plugin/out/optional-agent.log"
+}

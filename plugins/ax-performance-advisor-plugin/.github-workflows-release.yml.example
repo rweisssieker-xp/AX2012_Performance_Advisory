@@ -1,0 +1,21 @@
+name: AXPA Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile
+        run: python -m compileall plugins/ax-performance-advisor-plugin/scripts plugins/ax-performance-advisor-plugin/tests
+      - name: Tests
+        run: python -m unittest discover -s plugins/ax-performance-advisor-plugin/tests -v
+      - name: SBOM
+        run: python plugins/ax-performance-advisor-plugin/scripts/build_sbom.py --root plugins/ax-performance-advisor-plugin --output plugins/ax-performance-advisor-plugin/out/sbom.json
+      - name: Package
+        run: python plugins/ax-performance-advisor-plugin/scripts/build_release_package.py --root plugins/ax-performance-advisor-plugin --output plugins/ax-performance-advisor-plugin/out/release/ax-performance-advisor-plugin.zip

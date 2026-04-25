@@ -1,0 +1,25 @@
+{
+  "patterns": [
+    {
+      "id": "KI-STATS-001",
+      "matchPlaybook": "stale-statistics",
+      "title": "Stale SQL statistics on AX transaction or work tables",
+      "fixPath": "Targeted UPDATE STATISTICS in TEST, then approved maintenance window if validation passes.",
+      "validation": "Reduced cardinality-related regressions, lower reads/duration for affected query families."
+    },
+    {
+      "id": "KI-WAIT-001",
+      "matchPlaybook": "sql-wait-analysis",
+      "title": "Elevated SQL wait profile requires current-window correlation",
+      "fixPath": "Correlate wait spike with top queries, file latency, batch jobs, and business calendar.",
+      "validation": "Wait deltas decrease in comparable post-change window."
+    },
+    {
+      "id": "KI-QS-001",
+      "matchPlaybook": "deployment-regression",
+      "title": "Query Store high-runtime regression candidate",
+      "fixPath": "Compare query plans and runtime windows before/after deployment; avoid plan forcing without rollback.",
+      "validation": "P95 duration, CPU, and logical reads improve without new high-risk plans."
+    }
+  ]
+}
