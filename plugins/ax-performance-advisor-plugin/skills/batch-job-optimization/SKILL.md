@@ -13,6 +13,8 @@ Use this skill when AX batch runtime, nightly processing, retail jobs, AIF/servi
 - SQL wait/query/blocking evidence for the same time window.
 - AOS event logs, performance counters, and user session patterns.
 - Deployment or configuration change timestamps for before/after comparison.
+- Historical runtime trends, SLA targets, and maintenance-window boundaries.
+- Batch-group and AOS assignment across environments where environment drift is suspected.
 
 ## Analysis
 
@@ -20,7 +22,9 @@ Use this skill when AX batch runtime, nightly processing, retail jobs, AIF/servi
 2. Detect overlapping high-load jobs and collisions with user activity, integrations, or maintenance.
 3. Correlate batch windows with SQL waits, blocking, top queries, TempDB pressure, and file latency.
 4. Compare normal days with business-critical windows such as month-end close, inventory close, MRP, statement posting, and EDI imports.
-5. Separate tuning actions into scheduling, parallelism, AX code/query review, SQL maintenance, and infrastructure capacity.
+5. Forecast whether job duration will breach the target window based on recent trends.
+6. Identify performance debt: recurring jobs whose findings are repeatedly deferred.
+7. Separate tuning actions into scheduling, parallelism, AX code/query review, SQL maintenance, data lifecycle, and infrastructure capacity.
 
 ## Collision Patterns
 
@@ -32,9 +36,22 @@ Flag these patterns explicitly:
 - Frequent retries or partial failures that increase total load.
 - Jobs with rising duration trend after deployments or data-volume growth.
 - Posting, settlement, inventory, retail, or integration jobs causing repeat blocking roots.
+- Jobs that fit in test but fail in production due to data volume, AOS assignment, or schedule drift.
+- Custom batch classes whose SQL signature or Trace Parser stack dominates the runtime.
 
 ## Recommendations
 
 Prefer low-risk operational changes first: reschedule conflicting jobs, split oversized workloads, adjust batch groups or AOS assignment, and validate maintenance windows. Escalate to SQL or X++ changes only when evidence supports it.
 
 Each recommendation must include expected effect, affected business process, operational risk, validation window, owner, and rollback path. For GxP environments, describe the change as a proposal requiring approval, not an instruction to execute.
+
+## SLA Forecast Output
+
+When trend data exists, include:
+
+- Current average runtime and p95 runtime.
+- Weekly or monthly growth rate.
+- Target window and remaining buffer.
+- Predicted breach horizon.
+- Confidence and data limitations.
+- Recommended decision date.

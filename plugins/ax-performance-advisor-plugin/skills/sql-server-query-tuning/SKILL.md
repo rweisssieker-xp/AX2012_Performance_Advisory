@@ -13,6 +13,8 @@ Use this skill when reviewing SQL Server 2016 data from AX 2012 R3 systems.
 - Wait stats deltas, especially PAGEIOLATCH, CXPACKET/CXCONSUMER, LCK, WRITELOG, RESOURCE_SEMAPHORE, and TEMPDB-related waits.
 - Missing index DMVs, index usage, index operational stats, fragmentation, and statistics age.
 - Blocking chains, deadlock graphs, Query Store data if enabled, and file I/O latency.
+- Table row counts, reserved/used space, index size, partition/company distribution, and historical growth where available.
+- Production vs. test/pre-production differences in database options, indexes, statistics, compatibility level, maintenance jobs, and data volume.
 
 ## AX-Specific Guardrails
 
@@ -49,6 +51,29 @@ When proposing index or statistics work, include:
 - Deployment path, test plan, and rollback.
 - Before/after metrics: logical reads, CPU, duration, wait profile, blocking, and write cost.
 
+## Data Growth And Archive Signals
+
+Flag growth-driven findings when:
+
+- Runtime grows with table row count or index size.
+- Maintenance, backup, or statistics windows are expanding.
+- Old closed records dominate a high-cost table.
+- Staging, log, workflow, retail, or integration tables grow without retention.
+- Query tuning would only defer the underlying data-lifecycle problem.
+
+Archive recommendations must include business approval, retention/audit risk, reporting impact, validation, and rollback or restore approach.
+
+## Environment Drift Checks
+
+When a problem is production-only, compare:
+
+- Database options and compatibility level.
+- Max degree of parallelism and cost threshold settings where available.
+- Index definitions and disabled/hypothetical indexes.
+- Statistics age, sample rate, and auto-update behavior.
+- Data volume and distribution by company/module/date.
+- Maintenance schedule and Query Store availability.
+
 ## Output
 
-For each SQL finding, provide the query signature, affected database object, AX table mapping if known, observed metric, suspected cause, recommendation, change-readiness score, validation query, and rollback note.
+For each SQL finding, provide the query signature, affected database object, AX table mapping if known, observed metric, suspected cause, recommendation, change-readiness score, validation query, rollback note, data-growth signal, and environment-drift signal.

@@ -16,7 +16,13 @@ The implementation should normalize every analysis result to this shape.
   "businessImpact": {
     "process": "Nightly inventory processing",
     "impact": "Batch SLA risk",
-    "usersAffected": "Warehouse and finance users after morning start"
+    "usersAffected": "Warehouse and finance users after morning start",
+    "module": "Inventory",
+    "sla": {
+      "name": "Nightly batch window",
+      "targetEnd": "06:00",
+      "breachRisk": "medium"
+    }
   },
   "evidence": [
     {
@@ -29,9 +35,14 @@ The implementation should normalize every analysis result to this shape.
   ],
   "axContext": {
     "tables": ["InventTrans"],
+    "classes": ["ExampleBatchClass"],
+    "customObjects": [],
     "batchJobs": ["Example batch job"],
     "aos": ["AOS01"],
-    "companies": ["DAT"]
+    "companies": ["DAT"],
+    "module": "Inventory",
+    "businessOwner": "Supply Chain",
+    "technicalOwner": "AX Operations"
   },
   "sqlContext": {
     "queryHash": "0x0000000000000000",
@@ -42,7 +53,9 @@ The implementation should normalize every analysis result to this shape.
   "recommendation": {
     "summary": "Review schedule overlap and validate statistics/index coverage for the recurring query pattern.",
     "owner": "AX/SQL operations",
-    "requiresApproval": true
+    "requiresApproval": true,
+    "mode": "change-proposal",
+    "playbook": "batch-collision-and-read-pressure"
   },
   "changeReadiness": {
     "benefit": "high",
@@ -58,6 +71,34 @@ The implementation should normalize every analysis result to this shape.
     "baselineWindow": "previous 5 comparable runs",
     "postChangeWindow": "next 5 comparable runs",
     "rollback": "Revert schedule or remove proposed index/statistics change after approval."
+  },
+  "performanceDebt": {
+    "isDebt": true,
+    "firstSeen": "2026-03-14T02:00:00+01:00",
+    "recurrenceCount": 9,
+    "ageDays": 42,
+    "defermentReason": "Awaiting batch owner approval",
+    "nextDecision": "Approve schedule change or accept SLA risk"
+  },
+  "prediction": {
+    "slaBreachHorizonDays": 35,
+    "trendConfidence": "medium",
+    "capacitySignal": "batch-window-saturation"
+  },
+  "environmentDrift": {
+    "productionOnly": true,
+    "suspectedDifferences": ["data volume", "batch schedule", "statistics age"]
+  },
+  "dataGrowth": {
+    "isGrowthDriven": true,
+    "table": "InventTrans",
+    "growthSignal": "runtime increasing with row count",
+    "archiveCandidate": false
+  },
+  "regression": {
+    "relatedChange": "AX deployment 2026-04-20",
+    "status": "requires-validation",
+    "baselineDelta": "not yet calculated"
   },
   "status": "proposed"
 }

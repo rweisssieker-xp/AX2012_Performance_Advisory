@@ -1,0 +1,37 @@
+{
+  "environment": "IT-TEST-ERP4CU",
+  "sqlServer": "IT-TEST-ERP4CU",
+  "axDatabase": "MicrosoftDynamicsGBLAX",
+  "modelDatabase": "MicrosoftDynamicsGBLAX_model",
+  "maxFindings": 150,
+  "ticketSeverityMinimum": "high",
+  "waitDeltaPreferred": true,
+  "thresholds": {
+    "waitMs": 60000,
+    "logicalReads": 50000000,
+    "avgDurationMs": 30000,
+    "statisticsModificationPercent": 10,
+    "missingIndexImpact": 70
+  },
+  "suppressedWaitTypes": [
+    "CHECKPOINT_QUEUE",
+    "CLR_AUTO_EVENT",
+    "DIRTY_PAGE_POLL",
+    "FT_IFTS_SCHEDULER_IDLE_WAIT",
+    "PREEMPTIVE_XE_GETTARGETSTATE",
+    "QDS_ASYNC_QUEUE",
+    "QDS_PERSIST_TASK_MAIN_LOOP_SLEEP"
+  ],
+  "moduleOwners": {
+    "Inventory": {
+      "businessOwner": "Supply Chain",
+      "technicalOwner": "AX Operations",
+      "supportQueue": "AX-SCM"
+    },
+    "Finance": {
+      "businessOwner": "Finance",
+      "technicalOwner": "AX Operations",
+      "supportQueue": "AX-FIN"
+    }
+  }
+}

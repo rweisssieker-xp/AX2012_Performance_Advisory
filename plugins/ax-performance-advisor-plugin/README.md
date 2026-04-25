@@ -133,6 +133,240 @@ The technical analysis should feed an executive dashboard:
 - Change backlog.
 - Estimated business impact and deferred-risk cost.
 
+### 12. Custom-Code Hotspot Detection
+
+AX 2012 environments often suffer more from customizations than from standard AX behavior. The advisor should identify recurring custom-code hotspots:
+
+- X++ classes, reports, forms, services, custom batch jobs, and custom tables.
+- Repeated SQL patterns linked to the same customization.
+- Trace Parser evidence that connects call stacks to SQL cost.
+- Regression after custom deployments or hotfixes.
+- Ownership mapping to the responsible development or process team.
+
+The goal is to say: "This custom report or batch class is the performance driver", not only "this SQL query is expensive."
+
+### 13. Data Growth Advisor
+
+Some problems are data-lifecycle issues, not query-tuning issues. The advisor should detect:
+
+- Rapid table growth and skewed growth by company, item, customer, date, or module.
+- Tables with historical data that drives scan cost, index size, maintenance time, backup size, and TempDB pressure.
+- Runtime trends that rise with row count.
+- Archive or cleanup candidates.
+- Missing retention decisions for integrations, retail transactions, workflow history, staging tables, and logs.
+
+Output should distinguish "tune the query" from "reduce or partition the data pressure through an approved lifecycle strategy."
+
+### 14. AX Maintenance Window Optimizer
+
+Nightly windows often combine AX batch, SQL maintenance, backups, ETL, reporting, and integrations. The advisor should optimize the window as a whole:
+
+- Detect overlapping high-load jobs.
+- Identify backup/index/statistics maintenance collisions.
+- Compare job duration and resource pressure by time slot.
+- Recommend safer sequencing, split windows, or AOS/batch-group reassignment.
+- Flag windows that are too small for current data volume.
+
+### 15. Module-Specific Health Scores
+
+The plugin should produce module-level scores so technical risk is tied to business ownership:
+
+- Inventory.
+- Finance.
+- Sales.
+- Purchasing.
+- Retail.
+- Batch.
+- Integration.
+- Reporting.
+- Infrastructure/SQL.
+
+Each score should be explainable through findings, trend, severity, and business impact.
+
+### 16. Performance Debt Register
+
+Findings should persist into a performance debt register:
+
+- Open finding age.
+- Recurrence count.
+- Deferred risk.
+- Affected process.
+- Current owner.
+- Next decision.
+- Target date.
+- Validation state.
+
+This turns performance into a managed backlog rather than repeated one-off analysis.
+
+### 17. SLA Breach Prediction
+
+The advisor should use trends to warn before a process misses its window:
+
+- Batch duration growth.
+- Close-window compression.
+- Data growth vs. runtime growth.
+- Wait and blocking recurrence.
+- Capacity trend for CPU, memory, I/O, and TempDB.
+
+Example output: "Inventory close duration has grown 6 percent per week; current trend predicts SLA breach in about 5 weeks unless workload or data volume changes."
+
+### 18. Deployment Regression Detector
+
+The advisor should compare performance before and after:
+
+- X++ deployment.
+- AX hotfix.
+- SQL index or statistics change.
+- Configuration change.
+- Infrastructure change.
+- Batch schedule change.
+
+It should identify improved, unchanged, and regressed metrics with evidence and confidence.
+
+### 19. Table Ownership Mapping
+
+Technical tables should map to business and technical owners:
+
+- `InventTrans` -> Supply Chain / Inventory.
+- `GeneralJournalAccountEntry` -> Finance.
+- `RetailTransactionTable` -> Retail.
+- Custom tables -> owning customization or integration.
+
+This allows findings to be routed to accountable teams and converted into actionable change requests.
+
+### 20. Action Playbooks
+
+Common finding types should generate structured playbooks:
+
+- Stale statistics.
+- Blocking chain.
+- Batch collision.
+- Parameter-sensitive plan.
+- Missing composite index candidate.
+- TempDB pressure.
+- Data growth.
+- Custom-code hotspot.
+- Deployment regression.
+- Environment drift.
+
+Playbooks should include diagnostic confirmation, low-risk mitigations, change proposal, validation, and rollback.
+
+### 21. Risk-Based Index Advisor
+
+Index advice must consider AX realities:
+
+- Read benefit.
+- Write overhead.
+- Table volume.
+- AX model/deployment impact.
+- Existing index overlap.
+- Maintenance cost.
+- Locking risk during creation or rebuild.
+- Rollback path.
+
+The output should explicitly separate "candidate worth reviewing" from "recommended for implementation."
+
+### 22. User Experience And Role Correlation
+
+Performance findings should connect to affected users and roles where possible:
+
+- User sessions and client activity.
+- Role or department impact.
+- Business process affected.
+- AOS node and company.
+- Peak-hour vs. off-hour impact.
+
+This helps prioritize issues that directly affect operational users over background noise.
+
+### 23. Archive Candidate Detection
+
+The advisor should identify tables and processes where archiving, cleanup, or retention changes may produce better results than tuning:
+
+- Transaction history.
+- Workflow and batch history.
+- Integration staging.
+- Retail transactions.
+- Logs and temporary/staging tables.
+- Old closed business documents.
+
+Recommendations must include business approval and validation needs because archiving can affect reporting, audit, and legal retention.
+
+### 24. Environment Drift Detection
+
+The advisor should compare production, test, pre-production, and disaster-recovery environments:
+
+- SQL Server settings.
+- Database options.
+- Index and statistics differences.
+- AX batch setup.
+- AOS configuration.
+- Data volume and data distribution.
+- Maintenance jobs.
+- Hotfix/build level where available.
+
+This explains why performance issues are not reproducible outside production.
+
+### 25. Capacity Planning For Legacy AX
+
+The advisor should forecast how long the current AX 2012 platform remains operationally safe:
+
+- CPU, memory, I/O, storage, TempDB, and backup trend.
+- Batch duration and SLA trend.
+- Data growth trend.
+- User/session growth.
+- Integration volume growth.
+- Maintenance-window saturation.
+
+Output should support decisions about hardware, SQL tuning, archiving, workload redesign, or migration planning.
+
+### 26. Compliance-Safe Recommendation Modes
+
+The advisor should support recommendation modes:
+
+- Observe only: collect and summarize evidence.
+- Advisory: produce findings and recommendations.
+- Change proposal: generate implementation-ready proposal with risk and validation.
+- CAB package: produce formal change narrative and evidence pack.
+- Post-change validation: measure result and document outcome.
+
+This lets the same plugin serve operational troubleshooting and regulated change-control workflows.
+
+### 27. Noise-Controlled Findings
+
+The advisor should convert noisy monitoring data into a manageable action list by suppressing benign waits, deduplicating repeated symptoms, grouping by root cause, and limiting tickets to approved severities.
+
+### 28. Delta-Based SQL Diagnostics
+
+Wait stats and other cumulative DMVs should be interpreted as interval deltas whenever possible, so reports reflect the current workload rather than historical server uptime.
+
+### 29. Environment Profile As Code
+
+Each environment should have a versioned profile for SQL server, AX database, model database, thresholds, owner mapping, SLA targets, and suppression rules.
+
+### 30. Schema-Adaptive AX Collection
+
+Collectors should adapt to AX 2012 schema differences caused by localization, patch level, customization, or module availability.
+
+### 31. Root-Cause Board
+
+Individual findings should roll up into root-cause groups such as storage pressure, parameter-sensitive plans, stale statistics, data growth, batch collision, and environment drift.
+
+### 32. Evidence Quality Score
+
+Each finding should identify whether evidence is direct, correlated, inferred, or incomplete so reviewers can judge confidence quickly.
+
+### 33. Advisor Self-Diagnostics
+
+Collector failures should become explicit evidence, not hidden errors. The report should show which data sources failed and why.
+
+### 34. Safe Production Sampling
+
+Production collection should be read-only, timeout-aware, top-N bounded, and configurable, with deeper probes enabled explicitly.
+
+### 35. Board-Ready Change Bundles
+
+Findings should feed tickets, CAB packages, evidence packs, validation criteria, rollback notes, and owner routing from one consistent dataset.
+
 ## MVP Scope
 
 - SQL Server collector: top queries, wait stats, blocking, index fragmentation, missing indexes, plan cache signals, stale statistics, TempDB and file latency.
@@ -156,6 +390,11 @@ Each finding should be stored with this logical shape:
 - `changeReadiness`: risk, test effort, downtime, rollback, and approval path.
 - `validation`: before/after metric and observation window.
 - `status`: proposed, approved, implemented, rejected, deferred, validated.
+- `ownership`: business owner, technical owner, support queue, or vendor.
+- `performanceDebt`: recurrence, age, deferment reason, and next decision.
+- `prediction`: SLA risk, breach horizon, trend confidence, and capacity signal.
+- `environmentDrift`: whether the finding depends on production-only differences.
+- `playbook`: recommended diagnostic and remediation path.
 
 ## Prioritization Logic
 
@@ -165,7 +404,8 @@ Findings should be ranked by:
 - Reproducibility and evidence quality second.
 - Operational risk and reversibility third.
 - Cost of delay and recurrence fourth.
-- Ease of validation fifth.
+- SLA breach risk and performance-debt age fifth.
+- Ease of validation sixth.
 
 ## Design Principles
 
@@ -190,3 +430,8 @@ Findings should be ranked by:
 - Before/after comparator for deployments and tuning actions.
 - Power BI dataset export for executive reporting.
 - Azure DevOps or Jira ticket generation for approved findings.
+- Performance debt register.
+- SLA breach predictor.
+- Deployment regression detector.
+- Environment drift comparator.
+- Table ownership and action playbook library.

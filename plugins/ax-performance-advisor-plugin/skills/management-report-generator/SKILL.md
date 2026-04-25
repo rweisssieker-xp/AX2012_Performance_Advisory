@@ -15,6 +15,10 @@ Use this skill to turn technical AX/SQL performance findings into management sum
 - Action plan: owner, effort, risk, expected effect, validation metric, rollback option, and change category.
 - Before/after section: baseline, post-change result, measured delta, and conclusion.
 - Migration signal section: issues that are symptoms of structural legacy constraints rather than isolated tuning problems.
+- Performance debt register: recurring open findings, age, owner, deferred risk, and next decision.
+- SLA forecast: processes likely to breach target windows and the expected breach horizon.
+- Environment drift section: why production behavior differs from test/pre-production.
+- Ownership routing: business owner, technical owner, support queue, or vendor.
 - Appendix: detailed SQL/AX evidence for technical reviewers.
 
 ## Executive Metrics
@@ -29,6 +33,11 @@ Use these metrics when evidence exists:
 - Change backlog by risk and effort.
 - Improvement after implemented changes.
 - Deferred-risk statement for unresolved findings.
+- Module-specific health scores.
+- SLA breach prediction count.
+- Performance debt age and recurrence.
+- Capacity-planning signals.
+- Deployment regression count.
 
 ## Tone
 
@@ -53,3 +62,13 @@ Use this structure for each management-facing finding:
 - Risk if deferred.
 - Risk if implemented.
 - Validation and rollback.
+
+## Recommendation Modes
+
+Use the requested mode explicitly:
+
+- Observe only: summarize evidence and risks without recommendations requiring action.
+- Advisory: produce findings and candidate actions.
+- Change proposal: include owner, risk, approval path, test plan, validation, and rollback.
+- CAB package: include evidence pack references, audit trail, implementation plan, validation criteria, and approval narrative.
+- Post-change validation: compare baseline and post-change results, then state improved, unchanged, regressed, or inconclusive.

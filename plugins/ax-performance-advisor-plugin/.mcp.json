@@ -12,6 +12,9 @@
         "AXPA_ENABLE_PERF_COUNTER_READER": "false",
         "AXPA_ENABLE_POWERBI_EXPORT": "false",
         "AXPA_ENABLE_TICKET_EXPORT": "false",
+        "AXPA_ENABLE_DEBT_REGISTER": "false",
+        "AXPA_ENABLE_SLA_FORECAST": "false",
+        "AXPA_ENABLE_ENVIRONMENT_DRIFT": "false",
         "AXPA_READ_ONLY": "true"
       }
     }
