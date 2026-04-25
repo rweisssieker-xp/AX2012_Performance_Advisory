@@ -14,6 +14,7 @@ from axpa_core import (
     export_powerbi_dataset,
     write_json,
 )
+from ai_insights import generate_ai_insights
 
 
 TOOLS = [
@@ -72,6 +73,19 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {"evidence": {"type": "string"}, "output": {"type": "string"}, "system": {"type": "string"}},
+            "required": ["evidence", "output"],
+        },
+    },
+    {
+        "name": "generate_ai_insights",
+        "description": "Generate the full AI/KI advisory pack with 20 local reasoning features.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "evidence": {"type": "string"},
+                "output": {"type": "string"},
+                "question": {"type": "string"},
+            },
             "required": ["evidence", "output"],
         },
     },
@@ -135,6 +149,10 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             writer.writeheader()
             writer.writerows(rows)
         return content({"output": str(output), "rows": len(rows)})
+    if name == "generate_ai_insights":
+        payload = generate_ai_insights(args["evidence"], args.get("question", ""))
+        write_json(Path(args["output"]), payload)
+        return content({"output": args["output"], "features": payload["metadata"]["featureCount"], "findings": payload["metadata"]["findingCount"]})
     if name == "run_script":
         script = args["script"]
         if script not in ALLOWED_SCRIPTS:

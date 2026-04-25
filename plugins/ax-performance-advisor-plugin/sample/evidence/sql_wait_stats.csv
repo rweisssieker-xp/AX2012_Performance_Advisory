@@ -1,0 +1,5 @@
+wait_type,wait_time_ms,signal_wait_time_ms,waiting_tasks_count
+PAGEIOLATCH_SH,185000,1200,620
+LCK_M_X,92000,400,75
+WRITELOG,42000,500,210
+RESOURCE_SEMAPHORE,12000,300,12

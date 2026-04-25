@@ -1,5 +1,6 @@
 __pycache__/
 *.pyc
-out/
-evidence/
+/out/
+/evidence/
+/scripts/out/
 *.generated.json

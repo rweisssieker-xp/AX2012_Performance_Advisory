@@ -1,0 +1,2 @@
+message_type,status,direction,created_time,modified_time,duration_seconds,company
+SalesOrderImport,Error,Inbound,2026-04-25T02:05:00+02:00,2026-04-25T02:30:00+02:00,1500,DAT

@@ -417,3 +417,6 @@ Validated findings can be exported as reusable matching rules.
 
 ## USP 90: Cross-Customer Pattern Library
 Findings can be anonymized into reusable pattern records without customer data.
+
+## USP 91: Local AI/KI Advisory Pack
+The advisor can generate a complete local AI/KI advisory pack from existing evidence without external LLM access. The pack contains root-cause chat answers, finding explainers, change-risk prediction, batch scheduling advice, query-to-AX mapping, regression candidates, remediation planning, evidence-gap detection, incident summaries, GxP validation drafts, operator runbooks, noise reduction, business impact estimation, knowledge-base learning candidates, anomaly forecasts, D365 migration signals, ticket drafts, executive narratives, SQL-plan interpretation, and safe-action classification.

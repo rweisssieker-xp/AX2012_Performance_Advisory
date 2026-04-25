@@ -1,0 +1,4 @@
+job_id,job_name,class_name,batch_group,aos,company,status,start_time,end_time,duration_seconds,sla_target_seconds
+BJ-001,Inventory recalculation,InventCostRecalcBatch,INVENT,AOS01,DAT,Ended,2026-04-25T02:00:00+02:00,2026-04-25T02:58:00+02:00,3480,3600
+BJ-002,Retail statement posting,RetailStatementPostBatch,RETAIL,AOS01,DAT,Ended,2026-04-25T02:10:00+02:00,2026-04-25T02:55:00+02:00,2700,2400
+BJ-003,Custom inventory export,CustomInventExportBatch,INTEGRATION,AOS01,DAT,Ended,2026-04-25T02:05:00+02:00,2026-04-25T02:50:00+02:00,2700,1800

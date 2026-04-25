@@ -1,0 +1,2 @@
+class_name,method_name,duration_ms,sql_text
+CustomInventExportBatch,run,42000,SELECT * FROM INVENTTRANS WHERE ITEMID=@P1 AND DATEPHYSICAL>=@P2

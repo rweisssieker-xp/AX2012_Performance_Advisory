@@ -1,0 +1,4 @@
+object_name,module,row_count,size_mb,growth_rows_30d,growth_pct_30d,closed_record_pct
+dbo.INVENTTRANS,Inventory,90000000,480000,8500000,10.4,62
+dbo.RETAILTRANSACTIONTABLE,Retail,25000000,130000,5000000,25.0,81
+dbo.BATCHHISTORY,Batch,12000000,45000,1800000,17.6,95

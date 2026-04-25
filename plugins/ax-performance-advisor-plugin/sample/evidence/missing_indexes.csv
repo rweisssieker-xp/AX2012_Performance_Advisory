@@ -1,0 +1,3 @@
+database_name,object_name,equality_columns,inequality_columns,included_columns,avg_total_user_cost,avg_user_impact,user_seeks,user_scans
+AXDB,dbo.INVENTTRANS,"PARTITION,DATAAREAID,ITEMID",DATEPHYSICAL,"QTY,COSTAMOUNTPOSTED",320.5,88.0,430,2
+AXDB,dbo.RETAILTRANSACTIONTABLE,"PARTITION,DATAAREAID",TRANSDATE,"STORE,TERMINAL",180.0,76.0,52,10

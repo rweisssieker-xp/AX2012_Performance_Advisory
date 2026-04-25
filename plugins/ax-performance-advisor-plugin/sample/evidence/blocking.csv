@@ -1,0 +1,3 @@
+blocked_session_id,blocking_session_id,wait_type,wait_time_ms,database_name,object_name,program_name,login_name,sample_time
+75,62,LCK_M_X,540000,AXDB,dbo.INVENTTRANS,Microsoft Dynamics AX,AOSService,2026-04-25T02:31:00+02:00
+81,62,LCK_M_X,360000,AXDB,dbo.INVENTTRANS,Microsoft Dynamics AX,AOSService,2026-04-25T02:32:00+02:00

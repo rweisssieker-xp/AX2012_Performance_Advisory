@@ -1,0 +1,3 @@
+timestamp,Path,InstanceName,CookedValue
+2026-04-25T02:30:00+02:00,\Processor(_Total)\% Processor Time,_Total,91.5
+2026-04-25T02:30:00+02:00,\PhysicalDisk(_Total)\Avg. Disk sec/Read,_Total,0.035

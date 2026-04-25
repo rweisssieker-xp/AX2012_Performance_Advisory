@@ -1,0 +1,4 @@
+database_name,file_logical_name,file_type,io_stall_read_ms,num_of_reads,io_stall_write_ms,num_of_writes
+AXDB,AXDB_Data,ROWS,920000,42000,120000,18000
+AXDB,AXDB_Log,LOG,20000,2000,180000,30000
+tempdb,tempdev,ROWS,260000,90000,240000,82000

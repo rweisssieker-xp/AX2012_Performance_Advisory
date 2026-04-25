@@ -1,0 +1,3 @@
+source_file,process_id,spid,waitresource,waittime_ms,hostname,clientapp,loginname,transactionname,inputbuf
+sample_deadlock.xml,process1,62,KEY: 5:72057594045661184,5000,AOS01,Microsoft Dynamics AX,AOSService,user_transaction,UPDATE INVENTTRANS
+sample_deadlock.xml,process2,75,KEY: 5:72057594045661184,5000,AOS01,Microsoft Dynamics AX,AOSService,user_transaction,UPDATE INVENTSUM

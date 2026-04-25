@@ -1,0 +1,11 @@
+job_name,run_date,duration_seconds,sla_target_seconds
+Inventory recalculation,2026-03-28,2500,3600
+Inventory recalculation,2026-04-04,2720,3600
+Inventory recalculation,2026-04-11,3010,3600
+Inventory recalculation,2026-04-18,3290,3600
+Inventory recalculation,2026-04-25,3480,3600
+Custom inventory export,2026-03-28,1600,1800
+Custom inventory export,2026-04-04,1850,1800
+Custom inventory export,2026-04-11,2140,1800
+Custom inventory export,2026-04-18,2400,1800
+Custom inventory export,2026-04-25,2700,1800

@@ -11,6 +11,7 @@ SCRIPTS = PLUGIN_ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 from axpa_core import analyze_evidence, build_report, compare_baseline, export_evidence_pack, export_powerbi_dataset
+from ai_insights import AI_FEATURES, generate_ai_insights, render_markdown
 from mcp_server import handle
 
 
@@ -83,6 +84,53 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertEqual(called["id"], 3)
         self.assertTrue(output.exists())
         self.assertIn("Acceptance Criteria", output.read_text(encoding="utf-8"))
+
+    def test_ai_insights_generate_all_twenty_features(self) -> None:
+        payload = generate_ai_insights(self.evidence, "Warum war AX langsam?")
+        self.assertEqual(payload["metadata"]["featureCount"], 20)
+        self.assertEqual(len(AI_FEATURES), 20)
+        required = {
+            "naturalLanguageRootCauseChat",
+            "findingExplainers",
+            "changeRiskPredictor",
+            "batchSchedulerOptimizer",
+            "queryToAxCodeMapping",
+            "regressionDetector",
+            "remediationPlanner",
+            "evidenceGapDetector",
+            "incidentSummary",
+            "gxpValidationAssistant",
+            "runbookCopilot",
+            "noiseReduction",
+            "businessImpactEstimator",
+            "knowledgeBaseLearning",
+            "anomalyForecasting",
+            "d365MigrationSignal",
+            "ticketAutoDrafting",
+            "executiveNarrative",
+            "sqlPlanInterpreter",
+            "safeActionClassifier",
+        }
+        self.assertTrue(required.issubset(payload.keys()))
+        self.assertGreater(payload["metadata"]["findingCount"], 0)
+        self.assertIn("Warum war AX langsam?", payload["naturalLanguageRootCauseChat"]["question"])
+        self.assertIn("AI/KI Performance Advisory Pack", render_markdown(payload))
+
+    def test_mcp_ai_insights_export(self) -> None:
+        output = self.tmp / "ai-insights.json"
+        called = handle({
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {
+                "name": "generate_ai_insights",
+                "arguments": {"evidence": str(self.evidence), "output": str(output), "question": "Warum war AX langsam?"},
+            },
+        })
+        self.assertEqual(called["id"], 4)
+        self.assertTrue(output.exists())
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(payload["metadata"]["featureCount"], 20)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,7 @@
+object_pattern,module,business_owner,technical_owner,support_queue
+INVENT,Inventory,Supply Chain,AX Operations,AX-SCM
+CUST,Finance,Finance AR,AX Operations,AX-FIN
+VEND,Finance,Finance AP,AX Operations,AX-FIN
+RETAIL,Retail,Retail Operations,AX Retail Operations,AX-RETAIL
+CUSTOM,Custom,Owning Business Process,AX Development,AX-DEV
+BATCH,Batch,IT Operations,AX Operations,AX-OPS

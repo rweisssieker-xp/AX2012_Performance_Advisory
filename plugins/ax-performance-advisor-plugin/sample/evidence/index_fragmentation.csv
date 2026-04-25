@@ -1,0 +1,3 @@
+database_name,object_name,index_name,avg_fragmentation_in_percent,page_count
+AXDB,dbo.INVENTTRANS,I_175ITEMIDX,42.5,180000
+AXDB,dbo.CUSTTRANS,I_077ACCOUNTIDX,12.1,25000

@@ -1,0 +1,2 @@
+query_hash,plan_count,min_avg_duration_ms,max_avg_duration_ms,execution_count,first_seen,last_seen
+0xA1,3,1200,66000,240,2026-04-25T01:00:00+02:00,2026-04-25T02:45:00+02:00

@@ -1,0 +1,3 @@
+source_file,physical_op,logical_op,estimate_rows,estimated_cost,warnings
+sample.sqlplan,Sort,Sort,2500000,45.2,spill-to-tempdb
+sample.sqlplan,Index Scan,Index Scan,90000000,120.7,missing-index

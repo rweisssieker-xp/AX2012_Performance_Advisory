@@ -423,6 +423,49 @@ Findings should be ranked by:
 - `batch-job-optimization`: AX batch and SysOperation performance analysis.
 - `management-report-generator`: CIO-ready summaries and ITIL/GxP change narratives.
 
+## AI/KI Feature Pack
+
+The plugin includes a real local AI/KI advisory layer in `scripts/ai_insights.py`. It is deterministic and evidence-grounded: no external LLM call is required, and every output is derived from AXPA findings.
+
+Run it with:
+
+```powershell
+python .\scripts\ai_insights.py `
+  --evidence .\evidence\IT-TEST-ERP4CU `
+  --output .\out\IT-TEST-ERP4CU-ai-insights.json `
+  --markdown-output .\out\IT-TEST-ERP4CU-ai-insights.md `
+  --question "Warum war AX langsam?"
+```
+
+Implemented AI/KI features:
+
+- Natural-language root-cause chat.
+- Finding explainer for technical, key-user, and management audiences.
+- Change risk predictor.
+- Batch scheduler optimizer.
+- Query-to-AX-code mapping.
+- Regression detector.
+- Remediation planner.
+- Evidence gap detector.
+- Incident summary generator.
+- GxP validation assistant.
+- Runbook copilot.
+- Noise reduction and grouping.
+- Business impact estimator.
+- Knowledge-base learning candidates.
+- Anomaly forecasting candidates.
+- D365 migration signal map.
+- Ticket auto-drafting.
+- Executive narrative.
+- SQL plan interpreter.
+- Safe action classifier.
+
+Details are documented in `docs/ai-ki-features.md`.
+
+The interactive HTML dashboard embeds this AI/KI pack in dedicated tabs for advisory chat, safe actions, GxP validation, evidence gaps, ticket drafts, and collector status.
+
+Release and local test instructions are documented in `docs/release-runbook.md`. Additional future differentiation ideas are tracked in `docs/future-ai-usps.md`.
+
 ## Planned Extensions
 
 - AX rule-library files for table families, workload windows, and anti-patterns.

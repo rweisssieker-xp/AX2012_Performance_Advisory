@@ -1,0 +1,5 @@
+area,name,prod_value,test_value,severity
+sql_setting,max_degree_of_parallelism,8,0,medium
+data_volume,dbo.INVENTTRANS_rows,90000000,12000000,high
+statistics,dbo.INVENTTRANS.I_175ITEMIDX_last_updated,2026-03-01,2026-04-20,high
+batch,AOS01_INVENT_jobs,3,1,medium
