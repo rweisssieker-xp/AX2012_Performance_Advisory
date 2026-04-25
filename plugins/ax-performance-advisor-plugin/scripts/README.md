@@ -25,6 +25,11 @@ Implemented scripts:
 - `push_azure_devops_tickets.py`: creates Azure DevOps work items when credentials are provided.
 - `push_jira_tickets.py`: creates Jira issues when credentials are provided.
 - `push_powerbi_dataset.py`: pushes JSON rows to a Power BI streaming endpoint.
+- `generate_dashboard.py`: creates an interactive local HTML dashboard.
+- `check_sql_permissions.ps1`: verifies read-only SQL permission posture.
+- `setup_scheduled_task.ps1`: registers a Windows scheduled task for AXPA automation.
+- `plugin_integrity.py`: creates or verifies plugin code integrity manifests.
+- `run_script` MCP tool: exposes allowlisted Python scripts through the MCP server.
 - `generate_cab_package.py`: CAB/change-control package generator.
 - `compare_baseline.py`: before/after comparator for deployments, tuning actions, and batch schedule changes.
 - `export_evidence_pack.py`: bundles raw evidence, findings, approvals, and validation results for audit or change management.

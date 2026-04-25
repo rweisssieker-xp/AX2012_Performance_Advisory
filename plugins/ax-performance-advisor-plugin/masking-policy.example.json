@@ -1,0 +1,16 @@
+{
+  "maskColumnsContaining": [
+    "login",
+    "user",
+    "client",
+    "host",
+    "computer",
+    "statement_text",
+    "query_sql_text",
+    "inputbuf",
+    "itemid",
+    "accountnum"
+  ],
+  "mode": "sha256-prefix",
+  "preserveEmpty": true
+}

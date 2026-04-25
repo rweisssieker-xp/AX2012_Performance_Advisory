@@ -77,6 +77,24 @@ IGNORED_WAIT_TYPES = {
 }
 
 
+def load_simple_yaml_list(path: Path, key: str) -> list[str]:
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    values: list[str] = []
+    in_key = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(f"{key}:"):
+            in_key = True
+            continue
+        if in_key and stripped.startswith("- "):
+            values.append(stripped[2:].strip())
+        elif in_key and stripped and not stripped.startswith("#"):
+            break
+    return values
+
+
 @dataclass
 class Evidence:
     root: Path
@@ -134,7 +152,11 @@ def load_config(root_path: Path) -> dict[str, Any]:
     env_config = os.environ.get("AXPA_CONFIG")
     if env_config and Path(env_config).exists():
         return read_json(Path(env_config), {})
-    return {}
+    config: dict[str, Any] = {}
+    rules_waits = load_simple_yaml_list(Path(__file__).resolve().parents[1] / "rules" / "wait_stats_rules.yml", "ignored_waits")
+    if rules_waits:
+        config["suppressedWaitTypes"] = rules_waits
+    return config
 
 
 def load_evidence(root: str | Path) -> Evidence:

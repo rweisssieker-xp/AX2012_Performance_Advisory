@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -74,7 +75,19 @@ TOOLS = [
             "required": ["evidence", "output"],
         },
     },
+    {
+        "name": "run_script",
+        "description": "Run an allowlisted AXPA Python script by name with arguments.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"script": {"type": "string"}, "args": {"type": "array", "items": {"type": "string"}}},
+            "required": ["script"],
+        },
+    },
 ]
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+ALLOWED_SCRIPTS = {path.name for path in SCRIPT_DIR.glob("*.py") if path.name not in {"mcp_server.py"}}
 
 
 def content(payload: Any) -> dict[str, Any]:
@@ -122,6 +135,13 @@ def call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             writer.writeheader()
             writer.writerows(rows)
         return content({"output": str(output), "rows": len(rows)})
+    if name == "run_script":
+        script = args["script"]
+        if script not in ALLOWED_SCRIPTS:
+            raise ValueError(f"Script is not allowlisted: {script}")
+        cmd = [sys.executable, str(SCRIPT_DIR / script), *[str(item) for item in args.get("args", [])]]
+        completed = subprocess.run(cmd, text=True, capture_output=True, timeout=300)
+        return content({"returncode": completed.returncode, "stdout": completed.stdout, "stderr": completed.stderr})
     raise ValueError(f"Unknown tool: {name}")
 
 
