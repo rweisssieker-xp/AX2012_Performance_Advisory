@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Python
+        run: python -m compileall plugins/ax-performance-advisor-plugin/scripts plugins/ax-performance-advisor-plugin/tests
+      - name: Run unit tests
+        run: python -m unittest discover -s plugins/ax-performance-advisor-plugin/tests -v
+      - name: Validate JSON
+        shell: pwsh
+        run: |
+          python -m json.tool plugins/ax-performance-advisor-plugin/.codex-plugin/plugin.json | Out-Null
+          python -m json.tool plugins/ax-performance-advisor-plugin/.mcp.json | Out-Null
+          python -m json.tool plugins/ax-performance-advisor-plugin/.app.json | Out-Null
+          python -m json.tool plugins/ax-performance-advisor-plugin/config.example.json | Out-Null
+          python -m json.tool plugins/ax-performance-advisor-plugin/masking-policy.example.json | Out-Null
+      - name: Validate skills
+        shell: pwsh
+        run: |
+          $files=Get-ChildItem -Recurse -Filter SKILL.md -LiteralPath plugins/ax-performance-advisor-plugin/skills
+          foreach($f in $files){
+            $c=Get-Content -LiteralPath $f.FullName -TotalCount 1
+            if($c -ne '---'){ throw "Bad skill frontmatter: $($f.FullName)" }
+          }
+          Write-Output "SkillCount=$($files.Count)"
+

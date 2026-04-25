@@ -1,0 +1,20 @@
+.vs/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.log
+*.tmp
+
+# Generated AXPA output and live evidence
+plugins/ax-performance-advisor-plugin/out/
+plugins/ax-performance-advisor-plugin/evidence/
+plugins/ax-performance-advisor-plugin/**/*.generated.json
+
+# Secrets/local config
+*.local.json
+*.secret.json
+.env
+
