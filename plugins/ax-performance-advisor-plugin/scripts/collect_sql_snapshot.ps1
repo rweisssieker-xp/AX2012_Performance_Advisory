@@ -111,6 +111,51 @@ LEFT JOIN sys.partitions p ON l.resource_associated_entity_id = p.hobt_id
 WHERE r.blocking_session_id <> 0;
 "@
 
+Invoke-AxpaSqlQuery -OutputFile "ax_live_blocking.csv" -Query @"
+SELECT
+  s.login_name AS user_id,
+  COALESCE(s.host_name, '') AS host_name,
+  r.session_id,
+  r.blocking_session_id,
+  s.program_name,
+  r.status AS sql_status,
+  DB_NAME(r.database_id) AS database_name,
+  r.command,
+  r.wait_type,
+  r.wait_time AS wait_time_ms,
+  r.cpu_time AS cpu_time_ms,
+  r.total_elapsed_time AS elapsed_time_ms,
+  r.reads,
+  r.writes,
+  r.logical_reads,
+  SUBSTRING(t.text, (r.statement_start_offset/2)+1,
+    ((CASE r.statement_end_offset WHEN -1 THEN DATALENGTH(t.text) ELSE r.statement_end_offset END - r.statement_start_offset)/2)+1) AS statement_text,
+  SYSDATETIMEOFFSET() AS check_time,
+  CASE
+    WHEN s.program_name LIKE '%Dynamics AX%' THEN 'AX'
+    WHEN s.program_name LIKE '%Microsoft Dynamics%' THEN 'AX'
+    ELSE 'SQL'
+  END AS workload_family,
+  CASE
+    WHEN s.program_name LIKE '%Batch%' THEN 'Batch'
+    WHEN s.program_name LIKE '%Dynamics AX%' AND r.blocking_session_id <> 0 THEN 'Worker-Blocked'
+    WHEN s.program_name LIKE '%Dynamics AX%' THEN 'Worker'
+    ELSE ''
+  END AS ax_client_type,
+  CASE
+    WHEN r.blocking_session_id <> 0 THEN 'Wird beendet - Blockiert'
+    ELSE r.status
+  END AS ax_status
+FROM sys.dm_exec_requests r
+JOIN sys.dm_exec_sessions s ON r.session_id = s.session_id
+CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) t
+WHERE
+  s.program_name LIKE '%Dynamics AX%'
+  OR s.program_name LIKE '%Microsoft Dynamics%'
+  OR r.blocking_session_id <> 0
+ORDER BY r.blocking_session_id DESC, r.total_elapsed_time DESC;
+"@
+
 Invoke-AxpaSqlQuery -OutputFile "missing_indexes.csv" -Query @"
 SELECT
   DB_NAME(mid.database_id) AS database_name,

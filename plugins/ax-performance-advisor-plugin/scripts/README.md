@@ -27,6 +27,9 @@ Implemented scripts:
 - `push_powerbi_dataset.py`: pushes JSON rows to a Power BI streaming endpoint.
 - `generate_dashboard.py`: creates an interactive local HTML dashboard.
 - `autonomous_ops.py`: creates the Autonomous Ops pack with investigation queues, follow-up questions, evidence acquisition plans, change drafts, validation plans, readiness gates, next-best actions, and executive risk briefings.
+- `evidence_health.py`: summarizes source completeness, empty files, collector errors, AX schema discovery, and source status.
+- `skill_catalog.py`: groups plugin skills into primary and advanced capability categories.
+- `compare_environments.py`: compares multiple evidence directories for cross-machine or test-vs-prod dashboard context.
 - `check_sql_permissions.ps1`: verifies read-only SQL permission posture.
 - `setup_scheduled_task.ps1`: registers a Windows scheduled task for AXPA automation.
 - `plugin_integrity.py`: creates or verifies plugin code integrity manifests.

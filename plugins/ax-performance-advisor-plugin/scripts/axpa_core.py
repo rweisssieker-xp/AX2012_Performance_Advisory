@@ -178,6 +178,7 @@ def load_evidence(root: str | Path) -> Evidence:
         "sql_wait_stats_delta",
         "sql_wait_stats",
         "blocking",
+        "ax_live_blocking",
         "index_fragmentation",
         "missing_indexes",
         "statistics_age",
@@ -220,6 +221,13 @@ def object_token(name: str) -> str:
 
 def owner_for_object(name: str, ownership_rows: list[dict[str, Any]] | None = None) -> dict[str, str]:
     token = object_token(name)
+    if not token or token in {"SQL SERVER", "TEMPDB"} or token.startswith("MICROSOFTDYNAMICS"):
+        return {
+            "module": "SQL Server",
+            "businessOwner": "IT Operations",
+            "technicalOwner": "DBA / AX Operations",
+            "supportQueue": "DBA",
+        }
     rows = ownership_rows or []
     for row in rows:
         pattern = str(row.get("object_pattern", "")).upper()
@@ -430,6 +438,7 @@ def analyze_evidence(root: str | Path) -> list[dict[str, Any]]:
     findings.extend(analyze_top_queries(evidence))
     findings.extend(analyze_waits(evidence))
     findings.extend(analyze_blocking(evidence))
+    findings.extend(analyze_ax_live_blocking(evidence))
     findings.extend(analyze_missing_indexes(evidence))
     findings.extend(analyze_statistics(evidence))
     findings.extend(analyze_file_latency(evidence))
@@ -585,6 +594,47 @@ def analyze_blocking(evidence: Evidence) -> list[dict[str, Any]]:
                     "Repeated or long blocking suggests conflicting batch/user transactions or long transaction scope.",
                     "blocking-chain",
                     {"sqlContext": {"waitTypes": list({str(row.get("wait_type")) for row in rows})}},
+                )
+            )
+    return findings
+
+
+def analyze_ax_live_blocking(evidence: Evidence) -> list[dict[str, Any]]:
+    findings = []
+    rows = evidence.tables.get("ax_live_blocking", [])
+    for row in rows:
+        wait_ms = float(row.get("wait_time_ms") or 0)
+        elapsed_ms = float(row.get("elapsed_time_ms") or 0)
+        blocking = str(row.get("blocking_session_id") or "")
+        statement = str(row.get("statement_text") or "")
+        object_name = infer_object_from_sql(statement)
+        if blocking and blocking.lower() != "n/a" and blocking != "0":
+            findings.append(
+                mk_finding(
+                    evidence,
+                    f"AX worker blocked session {row.get('session_id')} by {blocking}",
+                    "high" if wait_ms >= 120_000 or elapsed_ms >= 300_000 else "medium",
+                    "high",
+                    "tune-now",
+                    object_name,
+                    "Identify the blocking AX/SQL session, affected worker, query table, and business process before terminating or rescheduling work.",
+                    "ax_live_blocking",
+                    "wait_time_ms",
+                    wait_ms,
+                    60_000,
+                    "Live AX worker is blocked; this can indicate batch/user collision, long transaction scope, or hot table update/select contention.",
+                    "blocking-chain",
+                    {
+                        "sqlContext": {"waitTypes": [str(row.get("wait_type") or "")], "objects": [object_name]},
+                        "axContext": {
+                            "aos": [str(row.get("host_name") or "")],
+                            "batchJobs": [],
+                            "companies": [],
+                        },
+                        "businessImpact": {
+                            "usersAffected": str(row.get("user_id") or "Unknown"),
+                        },
+                    },
                 )
             )
     return findings

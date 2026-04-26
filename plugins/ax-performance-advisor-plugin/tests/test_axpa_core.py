@@ -24,6 +24,10 @@ from market_differentiators import generate_market_differentiators
 from learning_extensions import generate_learning_extensions
 from autonomous_intelligence import generate_autonomous_intelligence
 from autonomous_ops import generate_autonomous_ops
+from evidence_health import generate_evidence_health
+from skill_catalog import generate_skill_catalog
+from compare_environments import compare_environments
+from ax_live_blocking_intelligence import generate_ax_live_blocking_intelligence
 from mcp_server import handle
 
 
@@ -269,6 +273,33 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("executiveRiskBriefing", payload)
         self.assertGreater(len(payload["investigationQueue"]), 0)
         self.assertGreater(len(payload["evidenceAcquisitionPlanner"]["tasks"]), 0)
+
+    def test_operational_gap_features_generate_real_payloads(self) -> None:
+        health = generate_evidence_health(self.evidence)
+        catalog = generate_skill_catalog(PLUGIN_ROOT)
+        comparison = compare_environments([self.evidence])
+        self.assertIn("sources", health)
+        self.assertGreater(health["summary"]["total"], 0)
+        self.assertGreaterEqual(catalog["skillCount"], 1)
+        self.assertIn("Primary", catalog["groups"])
+        self.assertEqual(comparison["environmentCount"], 1)
+
+    def test_ax_live_blocking_intelligence_detects_blocked_ax_workers(self) -> None:
+        shutil.copytree(self.evidence, self.tmp / "evidence")
+        evidence = self.tmp / "evidence"
+        (evidence / "ax_live_blocking.csv").write_text(
+            "user_id,host_name,session_id,blocking_session_id,program_name,sql_status,database_name,command,wait_type,wait_time_ms,cpu_time_ms,elapsed_time_ms,reads,writes,logical_reads,statement_text,check_time,workload_family,ax_client_type,ax_status\n"
+            "dbl10945,BRAS3333,223,391,Microsoft Dynamics AX,running,MicrosoftDynamicsGBLAX,UPDATE,LCK_M_U,314283,10,314283,0,10,2000,\"UPDATE GENERALJOURNALACCOUNTENTRY SET ISCREDIT=@P1 WHERE EXISTS (SELECT 'x' FROM GENERALJOURNALENTRY T2 WHERE T2.TRANSFERID=@P17)\",2026-04-24T09:00:03+02:00,AX,Worker-Blocked,Wird beendet - Blockiert\n"
+            "dbl80448,BRAS3333,132,,Microsoft Dynamics AX,running,MicrosoftDynamicsGBLAX,SELECT,,189073,10,189073,100,0,3000,\"SELECT SUM(T1.POSTEDQTY) FROM INVENTSUM T1 WHERE EXISTS (SELECT 'x' FROM INVENTDIM T2 WHERE T2.INVENTDIMID=T1.INVENTDIMID)\",2026-04-24T09:00:03+02:00,AX,Worker,Wird beendet - Blockiert\n",
+            encoding="utf-8",
+        )
+        findings = analyze_evidence(evidence)
+        payload = generate_ax_live_blocking_intelligence(evidence)
+        self.assertTrue(any("AX worker blocked session" in f["title"] for f in findings))
+        self.assertEqual(payload["featureCount"], 10)
+        self.assertEqual(payload["blockedRows"], 1)
+        self.assertTrue(any(item["table"] == "GENERALJOURNALACCOUNTENTRY" for item in payload["criticalQueryClassifier"]))
+        self.assertTrue(any(item["table"] == "GENERALJOURNALACCOUNTENTRY" for item in payload["hotTableContention"]))
 
 
 if __name__ == "__main__":

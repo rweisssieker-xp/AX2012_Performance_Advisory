@@ -7,6 +7,7 @@ This index is the starting point for using, operating, extending, and releasing 
 - [Architecture](architecture.md): components, data flow, trust boundaries, and output model.
 - [Operations Guide](operations-guide.md): how to collect evidence, generate dashboards, and run read-only analysis.
 - [Testing Guide](testing-guide.md): local validation, CI checks, dashboard smoke tests, and release verification.
+- [Skills Catalog](skills-catalog.md): primary and advanced skill grouping.
 - [Security Model](security-model.md): least-privilege SQL, evidence handling, masking, and secrets.
 - [Threat Model](threat-model.md): risks and mitigations for evidence, scripts, dashboards, and integrations.
 - [Release Runbook](release-runbook.md): package, validate, and publish the plugin.
