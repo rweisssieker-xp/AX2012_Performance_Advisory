@@ -59,6 +59,31 @@ function Get-AxpaColumnExpression {
   return "CAST($Default AS nvarchar(200)) AS $Alias"
 }
 
+Invoke-AxpaSqlQuery -OutputFile "ax_schema_discovery.csv" -Query @"
+SELECT
+  TABLE_SCHEMA AS table_schema,
+  TABLE_NAME AS table_name,
+  CASE
+    WHEN TABLE_NAME IN ('BATCHJOB','BATCH','SYSCLIENTSESSIONS','AIFMESSAGELOG','RETAILTRANSACTIONTABLE') THEN 'expected'
+    WHEN TABLE_NAME LIKE '%BATCH%' THEN 'batch-candidate'
+    WHEN TABLE_NAME LIKE '%SYSCLIENT%' OR TABLE_NAME LIKE '%SESSION%' THEN 'session-candidate'
+    WHEN TABLE_NAME LIKE '%AIF%' THEN 'aif-candidate'
+    WHEN TABLE_NAME LIKE '%RETAIL%' THEN 'retail-candidate'
+    ELSE 'context'
+  END AS discovery_type
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE'
+  AND (
+    TABLE_NAME IN ('BATCHJOB','BATCH','SYSCLIENTSESSIONS','AIFMESSAGELOG','RETAILTRANSACTIONTABLE','INVENTTRANS','GENERALJOURNALACCOUNTENTRY')
+    OR TABLE_NAME LIKE '%BATCH%'
+    OR TABLE_NAME LIKE '%SYSCLIENT%'
+    OR TABLE_NAME LIKE '%SESSION%'
+    OR TABLE_NAME LIKE '%AIF%'
+    OR TABLE_NAME LIKE '%RETAIL%'
+  )
+ORDER BY discovery_type, TABLE_SCHEMA, TABLE_NAME;
+"@
+
 $sessionAosExpr = Get-AxpaColumnExpression -TableName "dbo.SYSCLIENTSESSIONS" -Candidates @("AOSID","SERVERID","AOSINSTANCE","SERVERNAME") -Alias "aos"
 $sessionComputerExpr = Get-AxpaColumnExpression -TableName "dbo.SYSCLIENTSESSIONS" -Candidates @("CLIENTCOMPUTER","CLIENTMACHINE","COMPUTERNAME") -Alias "client_computer"
 $sessionStatusExpr = Get-AxpaColumnExpression -TableName "dbo.SYSCLIENTSESSIONS" -Candidates @("STATUS","SESSIONSTATUS") -Alias "status"
@@ -158,5 +183,14 @@ BEGIN
   ORDER BY trans_date DESC, transaction_count DESC;
 END
 "@
+
+$sourceStatus = @(
+  [pscustomobject]@{ source="BATCHJOB"; file="batch_jobs.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.BATCHJOB" -ColumnName "RECID"){"present"}else{"missing"}); note="AX batch job table" },
+  [pscustomobject]@{ source="BATCH"; file="batch_tasks.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.BATCH" -ColumnName "RECID"){"present"}else{"missing"}); note="AX batch task table" },
+  [pscustomobject]@{ source="SYSCLIENTSESSIONS"; file="user_sessions.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.SYSCLIENTSESSIONS" -ColumnName "RECID"){"present"}else{"missing"}); note="AX user session table" },
+  [pscustomobject]@{ source="AIFMESSAGELOG"; file="aif_services.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.AIFMESSAGELOG" -ColumnName "RECID"){"present"}else{"missing"}); note="AX AIF message table" },
+  [pscustomobject]@{ source="RETAILTRANSACTIONTABLE"; file="retail_load.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.RETAILTRANSACTIONTABLE" -ColumnName "RECID"){"present"}else{"missing"}); note="AX retail transaction table" }
+)
+$sourceStatus | Export-Csv -NoTypeInformation -Encoding UTF8 -Path (Join-Path $OutputDirectory "source_status.csv")
 
 Write-Host "AX database snapshot written to $OutputDirectory"

@@ -2,6 +2,14 @@
 
 AX Performance Advisor is a Codex plugin concept for Dynamics AX 2012 R3 environments running on SQL Server 2016. It is designed to collect evidence, correlate SQL and AX behavior, and generate explainable, auditable recommendations.
 
+## Documentation
+
+- `docs/INDEX.md`: complete documentation map.
+- `docs/architecture.md`: component and data-flow overview.
+- `docs/operations-guide.md`: read-only collection and reporting workflow.
+- `docs/testing-guide.md`: local and CI validation steps.
+- `docs/github-release-checklist.md`: GitHub release and PR checklist.
+
 ## Core USP
 
 The plugin is not another generic SQL monitoring surface. Its value is the AX-aware interpretation layer:

@@ -6,6 +6,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
 import statistics
 import sys
@@ -29,10 +30,20 @@ MODULE_PATTERNS = [
     ("CUST", "Finance", "Finance AR", "AX Operations", "AX-FIN"),
     ("VEND", "Finance", "Finance AP", "AX Operations", "AX-FIN"),
     ("LEDGER", "Finance", "Finance", "AX Operations", "AX-FIN"),
+    ("MAINACCOUNT", "Finance", "Finance", "AX Operations", "AX-FIN"),
+    ("DIMENSION", "Finance", "Finance", "AX Operations", "AX-FIN"),
+    ("TAX", "Finance", "Tax/Finance", "AX Operations", "AX-FIN"),
     ("GENERALJOURNAL", "Finance", "Finance", "AX Operations", "AX-FIN"),
     ("SALES", "Sales", "Sales Operations", "AX Operations", "AX-SALES"),
     ("PURCH", "Purchasing", "Procurement", "AX Operations", "AX-PROC"),
     ("RETAIL", "Retail", "Retail Operations", "AX Retail Operations", "AX-RETAIL"),
+    ("WMS", "Warehouse", "Warehouse Operations", "AX Operations", "AX-SCM"),
+    ("WHS", "Warehouse", "Warehouse Operations", "AX Operations", "AX-SCM"),
+    ("PROD", "Production", "Manufacturing", "AX Operations", "AX-MFG"),
+    ("BOM", "Production", "Manufacturing", "AX Operations", "AX-MFG"),
+    ("ROUTE", "Production", "Manufacturing", "AX Operations", "AX-MFG"),
+    ("DIR", "Global Address Book", "Master Data", "AX Operations", "AX-MDM"),
+    ("DOCU", "Document Management", "IT Operations", "AX Operations", "AX-OPS"),
     ("BATCH", "Batch", "IT Operations", "AX Operations", "AX-OPS"),
     ("CUSTOM", "Custom", "Owning Business Process", "AX Development", "AX-DEV"),
 ]
@@ -181,13 +192,18 @@ def load_evidence(root: str | Path) -> Evidence:
         "tempdb_usage",
         "plan_cache_variance",
         "query_store_runtime",
+        "query_store_status",
         "deadlock_processes",
+        "deadlocks",
         "plan_operators",
+        "plan_xml_inventory",
         "aos_counters",
         "aif_services",
         "retail_load",
         "user_sessions",
         "batch_tasks",
+        "source_status",
+        "ax_schema_discovery",
     ]:
         tables[name] = read_csv(root_path / f"{name}.csv")
     return Evidence(root_path, read_json(root_path / "metadata.json", {}), tables, load_config(root_path))
@@ -228,6 +244,52 @@ def owner_for_object(name: str, ownership_rows: list[dict[str, Any]] | None = No
         "technicalOwner": "AX Operations",
         "supportQueue": "AX-OPS",
     }
+
+
+def infer_object_from_sql(statement: str) -> str:
+    text = str(statement or "")
+    matches = re.findall(r"\b(?:FROM|JOIN|UPDATE|INTO)\s+((?:\[?[A-Za-z0-9_]+\]?\.)?\[?[A-Za-z0-9_]+\]?)", text, flags=re.IGNORECASE)
+    for match in matches:
+        cleaned = match.replace("[", "").replace("]", "")
+        if cleaned and not cleaned.upper().startswith(("SYS.", "SYS")):
+            return cleaned
+    return ""
+
+
+def plan_inventory_operator_rows(evidence: Evidence) -> list[dict[str, Any]]:
+    rows = []
+    for row in evidence.tables.get("plan_xml_inventory", []):
+        plan = str(row.get("query_plan") or "")
+        if not plan:
+            continue
+        query_hash = str(row.get("query_hash") or "")
+        plan_hash = str(row.get("plan_hash") or "")
+        checks = [
+            ("Index Scan", "scan"),
+            ("Table Scan", "scan"),
+            ("Key Lookup", "key-lookup"),
+            ("RID Lookup", "key-lookup"),
+            ("Sort", "sort"),
+            ("Hash Match", "hash-match"),
+            ("Parallelism", "parallelism"),
+            ("SpillToTempDb", "spill-to-tempdb"),
+            ("MissingIndexes", "missing-index"),
+        ]
+        for token, warning in checks:
+            count = plan.count(token)
+            if count:
+                rows.append({
+                    "source_file": "plan_xml_inventory.csv",
+                    "query_hash": query_hash,
+                    "plan_hash": plan_hash,
+                    "physical_op": token,
+                    "logical_op": token,
+                    "estimate_rows": "",
+                    "estimated_cost": row.get("total_duration_ms", ""),
+                    "warnings": warning,
+                    "operator_count": count,
+                })
+    return rows
 
 
 def mk_finding(
@@ -416,7 +478,7 @@ def analyze_top_queries(evidence: Evidence) -> list[dict[str, Any]]:
     for row in evidence.tables["sql_top_queries"]:
         reads = float(row.get("total_logical_reads") or 0)
         duration = float(row.get("avg_duration_ms") or 0)
-        object_name = str(row.get("object_name") or "")
+        object_name = str(row.get("object_name") or "") or infer_object_from_sql(str(row.get("statement_text") or ""))
         if reads >= 50_000_000 or duration >= 30_000:
             severity = "high" if reads >= 100_000_000 or duration >= 45_000 else "medium"
             extra = {
@@ -666,14 +728,14 @@ def analyze_plan_cache_variance(evidence: Evidence) -> list[dict[str, Any]]:
                     "medium",
                     "tune-now",
                     "",
-                    "Compare plans, parameter values, company/date/item skew, and statistics before forcing plans or changing SQL settings.",
+                    f"Compare {int(plan_count)} cached plans, duration range {round(min_ms, 2)}-{round(max_ms, 2)} ms, parameter skew, company/date/item selectivity, and statistics before forcing plans.",
                     "plan_cache_variance",
                     "duration_variance_ratio",
                     round(ratio, 2),
                     5,
                     "Multiple plans or strong duration variance may indicate parameter-sensitive execution behavior.",
                     "parameter-sensitive-plan",
-                    {"sqlContext": {"queryHash": str(row.get("query_hash", ""))}},
+                    {"sqlContext": {"queryHash": str(row.get("query_hash", "")), "planHash": str(row.get("plan_hash", ""))}, "validation": {"successMetric": "For the same query_hash, reduce duration/read variance and avoid new high-cost plans."}},
                 )
             )
     return findings
@@ -681,6 +743,46 @@ def analyze_plan_cache_variance(evidence: Evidence) -> list[dict[str, Any]]:
 
 def analyze_query_store(evidence: Evidence) -> list[dict[str, Any]]:
     findings = []
+    if not evidence.tables["query_store_runtime"]:
+        for row in evidence.tables.get("query_store_status", []):
+            state = str(row.get("actual_state_desc") or "")
+            size = float(row.get("current_storage_size_mb") or 0)
+            if state and state != "READ_WRITE":
+                findings.append(
+                    mk_finding(
+                        evidence,
+                        f"Query Store is {state}",
+                        "medium",
+                        "high",
+                        "evidence-gap",
+                        str(row.get("database_name") or ""),
+                        "Query Store is not providing writable runtime history for regression validation; decide whether to enable/adjust it under DBA change control.",
+                        "query_store_status",
+                        "actual_state_desc",
+                        state,
+                        "READ_WRITE",
+                        "Query Store status limits before/after regression proof.",
+                        "deployment-regression",
+                    )
+                )
+            elif state == "READ_WRITE" and size == 0:
+                findings.append(
+                    mk_finding(
+                        evidence,
+                        "Query Store enabled but no runtime rows collected",
+                        "low",
+                        "medium",
+                        "evidence-gap",
+                        str(row.get("database_name") or ""),
+                        "Confirm capture mode, workload timing, and permissions before relying on Query Store history.",
+                        "query_store_status",
+                        "current_storage_size_mb",
+                        size,
+                        "> 0",
+                        "Query Store may be enabled but lacks relevant data for the current evidence window.",
+                        "deployment-regression",
+                    )
+                )
     for row in evidence.tables["query_store_runtime"]:
         duration = float(row.get("avg_duration_ms") or 0)
         reads = float(row.get("avg_logical_io_reads") or 0)
@@ -733,9 +835,13 @@ def analyze_deadlocks(evidence: Evidence) -> list[dict[str, Any]]:
 
 def analyze_plan_operators(evidence: Evidence) -> list[dict[str, Any]]:
     findings = []
-    warning_rows = [row for row in evidence.tables["plan_operators"] if str(row.get("warnings", ""))]
+    operator_rows = evidence.tables["plan_operators"] + plan_inventory_operator_rows(evidence)
+    warning_rows = [row for row in operator_rows if str(row.get("warnings", ""))]
     spill_count = sum(1 for row in warning_rows if "spill-to-tempdb" in str(row.get("warnings", "")))
     missing_count = sum(1 for row in warning_rows if "missing-index" in str(row.get("warnings", "")))
+    scan_count = sum(int(row.get("operator_count") or 1) for row in warning_rows if "scan" in str(row.get("warnings", "")))
+    lookup_count = sum(int(row.get("operator_count") or 1) for row in warning_rows if "key-lookup" in str(row.get("warnings", "")))
+    parallel_count = sum(int(row.get("operator_count") or 1) for row in warning_rows if "parallelism" in str(row.get("warnings", "")))
     if spill_count:
         findings.append(
             mk_finding(
@@ -770,6 +876,42 @@ def analyze_plan_operators(evidence: Evidence) -> list[dict[str, Any]]:
                 1,
                 "Plan-level missing index warnings can support an index review candidate.",
                 "missing-composite-index-candidate",
+            )
+        )
+    if scan_count or lookup_count:
+        findings.append(
+            mk_finding(
+                evidence,
+                "Execution plan scan/lookup pressure detected",
+                "medium",
+                "medium",
+                "tune-now",
+                "",
+                "Review table scans and key lookups against AX index patterns, statistics, and query predicates.",
+                "plan_xml_inventory",
+                "scan_lookup_operator_count",
+                scan_count + lookup_count,
+                1,
+                "Scans and key lookups in top cached plans can explain high reads even without Trace Parser evidence.",
+                "missing-composite-index-candidate",
+            )
+        )
+    if parallel_count:
+        findings.append(
+            mk_finding(
+                evidence,
+                "Execution plan parallelism hotspots detected",
+                "low",
+                "medium",
+                "tune-now",
+                "",
+                "Review parallel plan candidates with waits, cost threshold, MAXDOP policy, and query shape before changing SQL settings.",
+                "plan_xml_inventory",
+                "parallel_operator_count",
+                parallel_count,
+                1,
+                "Parallel operators in top plans can be normal, but combined with CX waits or high duration they need review.",
+                "sql-wait-analysis",
             )
         )
     return findings

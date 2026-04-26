@@ -29,8 +29,32 @@ jobs:
         run: |
           $files=Get-ChildItem -Recurse -Filter SKILL.md -LiteralPath plugins/ax-performance-advisor-plugin/skills
           foreach($f in $files){
-            $c=Get-Content -LiteralPath $f.FullName -TotalCount 1
-            if($c -ne '---'){ throw "Bad skill frontmatter: $($f.FullName)" }
+            $text=Get-Content -LiteralPath $f.FullName -Raw
+            if($text -notmatch '^---\s*\r?\nname:' -or $text -notmatch 'description:'){ throw "Bad skill frontmatter: $($f.FullName)" }
           }
           Write-Output "SkillCount=$($files.Count)"
-
+      - name: Validate documentation links
+        shell: pwsh
+        run: |
+          $required=@(
+            "plugins/ax-performance-advisor-plugin/docs/INDEX.md",
+            "plugins/ax-performance-advisor-plugin/docs/architecture.md",
+            "plugins/ax-performance-advisor-plugin/docs/operations-guide.md",
+            "plugins/ax-performance-advisor-plugin/docs/testing-guide.md",
+            "plugins/ax-performance-advisor-plugin/docs/security-model.md",
+            "plugins/ax-performance-advisor-plugin/docs/threat-model.md",
+            "plugins/ax-performance-advisor-plugin/docs/release-runbook.md"
+          )
+          foreach($path in $required){
+            if(!(Test-Path -LiteralPath $path)){ throw "Missing required documentation: $path" }
+          }
+      - name: Check repository hygiene
+        shell: pwsh
+        run: |
+          $tracked = git ls-files
+          $forbidden = $tracked | Where-Object {
+            ($_ -match '(^|/)evidence/' -and $_ -notmatch '(^|/)sample/evidence/') -or
+            $_ -match '(^|/)out/' -or
+            $_ -match '\.(bak|tmp|log)$'
+          }
+          if($forbidden){ throw "Forbidden generated/evidence files tracked: $($forbidden -join ', ')" }

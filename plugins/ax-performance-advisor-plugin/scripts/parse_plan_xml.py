@@ -27,13 +27,24 @@ def parse_plan(path: Path) -> list[dict[str, str]]:
             warnings.append("spill-to-tempdb")
         if relop.find(".//sp:MissingIndexes", NS) is not None:
             warnings.append("missing-index")
+        if physical in {"Index Scan", "Table Scan"}:
+            warnings.append("scan")
+        if physical in {"Key Lookup", "RID Lookup"}:
+            warnings.append("key-lookup")
+        if physical == "Parallelism":
+            warnings.append("parallelism")
+        if physical in {"Sort", "Hash Match"}:
+            warnings.append(physical.lower().replace(" ", "-"))
         rows.append({
             "source_file": str(path),
+            "query_hash": "",
+            "plan_hash": "",
             "physical_op": physical,
             "logical_op": logical,
             "estimate_rows": est_rows,
             "estimated_cost": est_cost,
             "warnings": ";".join(warnings),
+            "operator_count": 1,
         })
     return rows
 
@@ -50,7 +61,7 @@ def main() -> int:
         rows.extend(parse_plan(file))
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with Path(args.output).open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["source_file", "physical_op", "logical_op", "estimate_rows", "estimated_cost", "warnings"])
+        writer = csv.DictWriter(handle, fieldnames=["source_file", "query_hash", "plan_hash", "physical_op", "logical_op", "estimate_rows", "estimated_cost", "warnings", "operator_count"])
         writer.writeheader()
         writer.writerows(rows)
     print(f"Wrote {len(rows)} plan operator rows to {args.output}")

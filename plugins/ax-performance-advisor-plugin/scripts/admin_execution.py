@@ -98,6 +98,7 @@ def build_execution_plan(
     confirm_token: str = "",
 ) -> dict[str, Any]:
     policy = load_policy()
+    env_display = environment
     env = environment.upper()
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -121,7 +122,7 @@ def build_execution_plan(
                 "findingId": finding["id"],
                 "title": finding["title"],
                 "severity": finding["severity"],
-                "environment": env,
+                "environment": env_display,
                 "actionType": act,
                 "status": "executable-after-final-review" if executable else "preview-only",
                 "script": str(script_path),
@@ -141,7 +142,7 @@ def build_execution_plan(
     result = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "mode": policy["defaultMode"],
-        "environment": env,
+        "environment": env_display,
         "actionCount": len(actions),
         "executableCount": sum(1 for a in actions if a["status"] != "preview-only"),
         "policy": policy,
@@ -152,7 +153,7 @@ def build_execution_plan(
         audit_dir / "admin-execution-audit.json",
         {
             "generatedAt": result["generatedAt"],
-            "environment": env,
+            "environment": env_display,
             "approvalReference": approval_reference,
             "actionCount": len(actions),
             "executableCount": result["executableCount"],

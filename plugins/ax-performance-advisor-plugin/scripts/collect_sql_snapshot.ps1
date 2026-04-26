@@ -211,11 +211,29 @@ ORDER BY max_avg_duration_ms DESC;
 "@
 
 if ($IncludeQueryStore) {
+  Invoke-AxpaSqlQuery -OutputFile "query_store_status.csv" -Query @"
+DECLARE @db sysname = COALESCE(NULLIF('$AxDatabaseName', ''), DB_NAME());
+DECLARE @sql nvarchar(max) = N'
+USE ' + QUOTENAME(@db) + N';
+SELECT
+  DB_NAME() AS database_name,
+  actual_state_desc,
+  desired_state_desc,
+  readonly_reason,
+  current_storage_size_mb,
+  max_storage_size_mb,
+  stale_query_threshold_days,
+  size_based_cleanup_mode_desc,
+  query_capture_mode_desc
+FROM sys.database_query_store_options;';
+EXEC sys.sp_executesql @sql;
+"@
+
   Invoke-AxpaSqlQuery -OutputFile "query_store_runtime.csv" -Query @"
 DECLARE @db sysname = COALESCE(NULLIF('$AxDatabaseName', ''), DB_NAME());
 DECLARE @sql nvarchar(max) = N'
 USE ' + QUOTENAME(@db) + N';
-IF EXISTS (SELECT 1 FROM sys.database_query_store_options WHERE actual_state_desc = ''READ_WRITE'')
+IF EXISTS (SELECT 1 FROM sys.database_query_store_options WHERE actual_state_desc IN (''READ_WRITE'', ''READ_ONLY''))
 BEGIN
   SELECT TOP (100)
     q.query_id,
@@ -252,8 +270,8 @@ events AS (
   CROSS APPLY target_xml.nodes('//RingBufferTarget/event[@name="xml_deadlock_report"]') AS xed(event_data)
 )
 SELECT
-  event_data.value('@timestamp', 'datetime2') AS event_time,
-  event_data.query('(data/value/deadlock)[1]') AS deadlock_xml
+  event_data.value('(event/@timestamp)[1]', 'datetime2') AS event_time,
+  event_data.query('(event/data/value/deadlock)[1]') AS deadlock_xml
 FROM events
 ORDER BY event_time DESC;
 "@
