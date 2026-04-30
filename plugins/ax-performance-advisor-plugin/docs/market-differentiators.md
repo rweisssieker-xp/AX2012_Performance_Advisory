@@ -11,6 +11,14 @@ This pack adds product-positioning and management differentiation artifacts.
 - Process owner scorecards.
 - Evidence marketplace for missing high-value evidence.
 - Value realization opportunities.
+- Performance Digital Twin for process, table, and root-cause layers.
+- Causal Graph Engine for wait/table/root-cause/module edges.
+- Performance Contract Tests for before/after validation.
+- Change Blast Radius by affected modules and tables.
+- Performance Debt Interest by severity, recurrence, and age.
+- Remediation Portfolio Optimizer by benefit/risk/confidence.
+- AX Aging Risk Index for legacy platform pressure.
+- Regression Test Skeletons generated from findings.
 
 ## Run
 

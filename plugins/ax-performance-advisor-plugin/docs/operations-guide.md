@@ -56,12 +56,73 @@ python .\scripts\parse_plan_xml.py --input .\incoming\plan.sqlplan --output .\ev
 
 ## 6. Analyze and Report
 
+Preferred single-command workflow:
+
+```powershell
+python .\scripts\run_axpa_pipeline.py `
+  --environment prod-snapshot `
+  --server SERVER `
+  --database AXDB `
+  --evidence .\evidence\prod-snapshot `
+  --out .\out `
+  --collect
+```
+
+The pipeline uses a lock file by default at `out/<environment>.lock` to prevent
+overlapping scheduled runs. Use `--lock-file` to override the location and
+`--stale-lock-minutes` for stale lock recovery.
+
+Manual workflow:
+
 ```powershell
 python .\scripts\analyze_evidence.py --evidence .\evidence\prod-snapshot --output .\out\findings.json
 python .\scripts\generate_report.py --evidence .\evidence\prod-snapshot --output .\out\technical-report.md
 python .\scripts\generate_dashboard.py --evidence .\evidence\prod-snapshot --output .\out\dashboard.html
 python .\scripts\autonomous_ops.py --evidence .\evidence\prod-snapshot --output .\out\autonomous-ops.json
+python .\scripts\update_trend_store.py --evidence .\evidence\prod-snapshot --db .\out\axpa-trends.sqlite
+python .\scripts\platform_extensions.py --evidence .\evidence\prod-snapshot --output-dir .\out\prod-platform --trend-db .\out\axpa-trends.sqlite
 ```
+
+The dashboard includes a real AX Batch Collision Analysis tab when `batch_tasks.csv`
+or `batch_jobs.csv` contains start and end timestamps. The analysis calculates:
+
+- overlapping batch task pairs and affected batch groups,
+- peak parallelism and the timestamp of the peak,
+- short-running batch storms in the same minute,
+- long-running batch tasks,
+- live blocking rows observed during the same collector run,
+- persistent batch collision metrics in the SQLite trend store.
+
+The dashboard also includes a `Platform` tab. It is generated from the same
+evidence and adds trend history, recommendation lifecycle, incident replay,
+query-plan variance, deadlock graph records, AOS topology, scheduler hardening,
+push-readiness, X++ attribution, environment drift checks, and an AI decision
+cockpit. External systems are not updated unless separate credentials and
+approval policies are configured.
+
+Optional push integrations become push-capable when these environment variables
+are configured:
+
+- Power BI: `AXPA_POWERBI_WORKSPACE_ID`, `AXPA_POWERBI_DATASET_ID`, `AXPA_POWERBI_TOKEN`
+- Teams: `AXPA_TEAMS_WEBHOOK_URL`
+- Azure DevOps: `AXPA_ADO_ORG`, `AXPA_ADO_PROJECT`, `AXPA_ADO_TOKEN`
+- Jira: `AXPA_JIRA_BASE_URL`, `AXPA_JIRA_PROJECT`, `AXPA_JIRA_TOKEN`
+- ServiceNow: `AXPA_SN_INSTANCE_URL`, `AXPA_SN_TOKEN`
+
+Run productive/dry-run pushes through the audited push hub:
+
+```powershell
+python .\scripts\push_integrations.py `
+  --evidence .\evidence\prod-snapshot `
+  --targets teams,ado,jira,servicenow,powerbi `
+  --audit-db .\out\prod-push-audit.sqlite `
+  --limit 20 `
+  --dry-run
+```
+
+Trace Parser, DynamicsPerf, or AX model mapping evidence is required for
+high-confidence SQL Query -> X++ class/method attribution. Without those files,
+the plugin reports low-confidence attribution and the exact collector to run.
 
 ## 7. Share Safely
 

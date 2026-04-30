@@ -24,7 +24,10 @@ This index is the starting point for using, operating, extending, and releasing 
 - [Strategy Extensions](strategy-extensions.md)
 - [Learning Extensions](learning-extensions.md)
 - [Market Differentiators](market-differentiators.md)
+- [Platform Extensions](platform-extensions.md)
 - [Future AI USPs](future-ai-usps.md)
+- [AX Batch Collision Analysis](batch-collision-analysis.md)
+- [Pipeline Orchestrator](pipeline-orchestrator.md)
 - [USP Catalog](usp-catalog.md)
 
 ## Operational References

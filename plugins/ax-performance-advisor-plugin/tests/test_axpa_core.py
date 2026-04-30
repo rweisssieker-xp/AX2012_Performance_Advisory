@@ -1,5 +1,7 @@
 import json
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +12,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = PLUGIN_ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from axpa_core import analyze_evidence, build_report, compare_baseline, export_evidence_pack, export_powerbi_dataset
+from axpa_core import analyze_evidence, batch_collision_summary, build_report, compare_baseline, export_evidence_pack, export_powerbi_dataset, load_evidence
 from ai_insights import AI_FEATURES, generate_ai_insights, render_markdown
 from realization_pack import generate_realization_pack
 from admin_execution import build_execution_plan
@@ -28,6 +30,7 @@ from evidence_health import generate_evidence_health
 from skill_catalog import generate_skill_catalog
 from compare_environments import compare_environments
 from ax_live_blocking_intelligence import generate_ax_live_blocking_intelligence
+from platform_extensions import generate_platform_extensions
 from mcp_server import handle
 
 
@@ -200,6 +203,14 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("retentionCandidates", payload)
         self.assertIn("knownIssueMatches", payload)
         self.assertIn("executiveBriefings", payload)
+        self.assertIn("temporalHotspotMap", payload)
+        self.assertIn("workloadFingerprinting", payload)
+        self.assertIn("archiveImpactSandbox", payload)
+        self.assertIn("performanceBudgeting", payload)
+        self.assertIn("validationOrchestrator", payload)
+        self.assertIn("operatorCopilotContext", payload)
+        self.assertIn("selfCalibratingThresholds", payload)
+        self.assertIn("budgets", payload["performanceBudgeting"])
 
     def test_governance_extensions_generate_audit_outputs(self) -> None:
         out = self.tmp / "governance"
@@ -228,6 +239,11 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("llmContextPack", payload)
         self.assertIn("evidenceChunks", payload)
         self.assertIn("confidenceCalibration", payload)
+        self.assertIn("batchRescheduleSimulator", payload)
+        self.assertIn("rootCauseBridge", payload)
+        self.assertIn("nextBestEvidence", payload)
+        self.assertIn("changeRoiPrioritizer", payload)
+        self.assertIn("adminCopilotQuestions", payload)
         self.assertGreater(len(payload["evidenceChunks"]), 0)
 
     def test_market_differentiators_generate_more_usps(self) -> None:
@@ -239,6 +255,16 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("processOwnerScorecards", payload)
         self.assertIn("evidenceMarketplace", payload)
         self.assertIn("valueRealization", payload)
+        self.assertIn("performanceDigitalTwin", payload)
+        self.assertIn("causalGraphEngine", payload)
+        self.assertIn("performanceContractTests", payload)
+        self.assertIn("changeBlastRadius", payload)
+        self.assertIn("performanceDebtInterest", payload)
+        self.assertIn("remediationPortfolioOptimizer", payload)
+        self.assertIn("axAgingRiskIndex", payload)
+        self.assertIn("regressionTestSkeletons", payload)
+        self.assertGreaterEqual(payload["performanceDigitalTwin"]["nodeCount"], 1)
+        self.assertGreaterEqual(payload["performanceContractTests"]["contractCount"], 1)
 
     def test_learning_extensions_generate_ai_decision_artifacts(self) -> None:
         out = self.tmp / "learning"
@@ -300,6 +326,236 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertEqual(payload["blockedRows"], 1)
         self.assertTrue(any(item["table"] == "GENERALJOURNALACCOUNTENTRY" for item in payload["criticalQueryClassifier"]))
         self.assertTrue(any(item["table"] == "GENERALJOURNALACCOUNTENTRY" for item in payload["hotTableContention"]))
+
+    def test_batch_collision_analysis_detects_overlaps_and_storms(self) -> None:
+        shutil.copytree(self.evidence, self.tmp / "evidence")
+        evidence = self.tmp / "evidence"
+        (evidence / "batch_tasks.csv").write_text(
+            "task_id,job_id,class_number,caption,batch_group,company,status,start_time,end_time,duration_seconds\n"
+            "1,10,100,Inventory close,INVENT,GBL,4,27.04.2026 02:00:00,27.04.2026 02:45:00,2700\n"
+            "2,11,101,MRP run,MRP,GBL,4,27.04.2026 02:10:00,27.04.2026 02:50:00,2400\n"
+            "3,12,102,AIF import,AIF,GBL,4,27.04.2026 02:15:00,27.04.2026 02:20:00,300\n"
+            "4,13,103,Tiny 1,LOG2,GBL,4,27.04.2026 03:00:01,27.04.2026 03:00:05,4\n"
+            "5,14,104,Tiny 2,LOG2,GBL,4,27.04.2026 03:00:02,27.04.2026 03:00:05,3\n"
+            "6,15,105,Tiny 3,LOG2,GBL,4,27.04.2026 03:00:03,27.04.2026 03:00:05,2\n"
+            "7,16,106,Tiny 4,LOG2,GBL,4,27.04.2026 03:00:04,27.04.2026 03:00:06,2\n"
+            "8,17,107,Tiny 5,LOG2,GBL,4,27.04.2026 03:00:05,27.04.2026 03:00:07,2\n",
+            encoding="utf-8",
+        )
+        summary = batch_collision_summary(load_evidence(evidence))
+        findings = analyze_evidence(evidence)
+        self.assertGreaterEqual(summary["collisionCount"], 2)
+        self.assertGreaterEqual(summary["peakConcurrency"], 2)
+        self.assertTrue(summary["shortRunnerStorms"])
+        self.assertTrue(any("AX batch group collision" in f["title"] or "AX short-running batch storm" in f["title"] for f in findings))
+
+    def test_pipeline_orchestrator_analyze_only_writes_manifest(self) -> None:
+        evidence = self.tmp / "evidence"
+        out = self.tmp / "out"
+        shutil.copytree(self.evidence, evidence)
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "run_axpa_pipeline.py"),
+                "--environment",
+                "unit",
+                "--server",
+                "unit-sql",
+                "--database",
+                "unit-ax",
+                "--evidence",
+                str(evidence),
+                "--out",
+                str(out),
+            ],
+            cwd=str(PLUGIN_ROOT),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest = json.loads((out / "unit-pipeline-manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["status"], "ok")
+        self.assertTrue((out / "unit-dashboard.html").exists())
+        self.assertTrue(any(step["name"] == "trend-store" and step["status"] == "ok" for step in manifest["steps"]))
+        self.assertFalse((out / "unit.lock").exists())
+
+    def test_platform_extensions_cover_product_gaps(self) -> None:
+        out = self.tmp / "platform"
+        payload = generate_platform_extensions(self.evidence, out)
+        for key in [
+            "trendDashboard",
+            "recommendationLifecycle",
+            "incidentReplay",
+            "queryPlanDiff",
+            "deadlockGraph",
+            "aosTopology",
+            "schedulerHardening",
+            "productivePushReadiness",
+            "xppAttribution",
+            "environmentDriftGuard",
+            "aiDecisionCockpit",
+            "liveBatchCollisionWatch",
+            "batchRescheduleCalendar",
+            "sqlBlockingChainRecorder",
+            "axBusinessProcessSla",
+            "evidenceGapAssistant",
+            "deploymentRegressionGuard",
+            "adminRemediationWorkbench",
+            "alertingRules",
+            "aiSafeFeatures",
+        ]:
+            self.assertIn(key, payload)
+        self.assertTrue((out / "platform-extensions.json").exists())
+        self.assertGreaterEqual(payload["recommendationLifecycle"]["items"].__len__(), 1)
+        self.assertIn("accepted", payload["recommendationLifecycle"]["transitions"]["proposed"])
+        self.assertIn("mapperInputs", payload["xppAttribution"])
+        self.assertIn("dimensions", payload["environmentDriftGuard"])
+        self.assertIn("alerts", payload["liveBatchCollisionWatch"])
+        self.assertIn("proposals", payload["batchRescheduleCalendar"])
+        self.assertIn("chains", payload["sqlBlockingChainRecorder"])
+        self.assertIn("items", payload["axBusinessProcessSla"])
+        self.assertIn("gaps", payload["evidenceGapAssistant"])
+        self.assertIn("topRuntimeQueries", payload["deploymentRegressionGuard"])
+        self.assertIn("actions", payload["adminRemediationWorkbench"])
+        self.assertIn("rules", payload["alertingRules"])
+        self.assertIn("batchTwin", payload["aiSafeFeatures"])
+
+    def test_platform_gap_closure_covers_remaining_ten_features(self) -> None:
+        out = self.tmp / "platform-gaps"
+        payload = generate_platform_extensions(self.evidence, out)
+        gaps = payload["gapClosure"]
+        required = {
+            "deadlockCapture",
+            "xppTraceAttribution",
+            "retailLoadStatus",
+            "productivePushExecution",
+            "adminExecutionGate",
+            "schedulerInstall",
+            "trendRunQuality",
+            "batchDependencyAwareReschedule",
+            "llmRagCopilot",
+            "githubReleaseReadiness",
+        }
+        self.assertEqual(set(gaps), required)
+        self.assertIn("collectorCommand", gaps["deadlockCapture"])
+        self.assertIn("dependencies", gaps["batchDependencyAwareReschedule"])
+        self.assertIn("dryRunCommand", gaps["productivePushExecution"])
+        self.assertIn("installCommand", gaps["schedulerInstall"])
+        self.assertIn("quality", gaps["trendRunQuality"])
+        self.assertIn("releaseChecklist", gaps["githubReleaseReadiness"])
+
+    def test_gap_closure_writes_action_pack_and_references_real_scripts(self) -> None:
+        out = self.tmp / "platform-gap-actions"
+        payload = generate_platform_extensions(self.evidence, out)
+        gaps = payload["gapClosure"]
+        self.assertTrue((out / "gap-closure-actions.json").exists())
+        self.assertTrue((out / "gap-closure-actions.md").exists())
+        action_text = (out / "gap-closure-actions.md").read_text(encoding="utf-8")
+        self.assertIn("Deadlock capture", action_text)
+        self.assertIn("scripts/setup_deadlock_capture.sql", action_text)
+        self.assertIn("scripts/install_windows_task.ps1", action_text)
+        self.assertIn("scripts/push_integrations.py", action_text)
+        self.assertTrue((SCRIPTS / "setup_deadlock_capture.sql").exists())
+        self.assertTrue((SCRIPTS / "install_windows_task.ps1").exists())
+        self.assertIn("setup_deadlock_capture.sql", gaps["deadlockCapture"]["collectorCommand"])
+        self.assertIn("install_windows_task.ps1", gaps["schedulerInstall"]["installCommand"])
+
+    def test_batch_dependency_graph_finds_job_chains_and_reschedule_risks(self) -> None:
+        evidence = self.tmp / "batch-deps"
+        shutil.copytree(self.evidence, evidence)
+        (evidence / "batch_jobs.csv").write_text(
+            "job_id,job_name,class_name,batch_group,aos,company,status,start_time,end_time,duration_seconds,sla_target_seconds\n"
+            "100,Nightly inventory,,INVENT,,GBL,4,27.04.2026 02:00:00,27.04.2026 02:50:00,3000,3600\n"
+            "200,Report wave,,Reports,,GBL,4,27.04.2026 16:00:00,27.04.2026 16:30:00,1800,1800\n",
+            encoding="utf-8",
+        )
+        (evidence / "batch_tasks.csv").write_text(
+            "task_id,job_id,class_number,caption,batch_group,company,status,start_time,end_time,duration_seconds\n"
+            "1,100,10,Invent close step 1,INVENT,GBL,4,27.04.2026 02:00:00,27.04.2026 02:20:00,1200\n"
+            "2,100,11,MRP dependent step,MRP,GBL,4,27.04.2026 02:21:00,27.04.2026 02:45:00,1440\n"
+            "3,200,20,Report extract,Reports,GBL,4,27.04.2026 16:00:00,27.04.2026 16:05:00,300\n"
+            "4,200,21,Report mail,Reports,GBL,4,27.04.2026 16:06:00,27.04.2026 16:08:00,120\n",
+            encoding="utf-8",
+        )
+        payload = generate_platform_extensions(evidence, self.tmp / "batch-deps-out")
+        graph = payload["batchDependencyGraph"]
+        self.assertGreaterEqual(graph["chainCount"], 2)
+        self.assertTrue(any(edge["fromGroup"] == "INVENT" and edge["toGroup"] == "MRP" for edge in graph["edges"]))
+        self.assertTrue(any(chain["jobId"] == "100" and chain["risk"] in {"high", "medium"} for chain in graph["chains"]))
+        self.assertTrue(any(risk["moveGroup"] == "INVENT" and "MRP" in risk["dependentGroups"] for risk in graph["rescheduleRisks"]))
+
+    def test_strategic_usp_pack_contains_all_ten_named_features(self) -> None:
+        payload = generate_platform_extensions(self.evidence, self.tmp / "strategic-usps")
+        pack = payload["strategicUspPack"]
+        required = {
+            "batchDependencyGraph",
+            "batchSlaContractManager",
+            "deadlockToAxProcessAttribution",
+            "aosAffinityAdvisor",
+            "dataGrowthArchivingRoi",
+            "changeSimulationQueue",
+            "evidenceSla",
+            "knownIssueMatcher",
+            "operationalMaturityScore",
+            "d365MigrationSignalDashboard",
+        }
+        self.assertEqual(set(pack), required)
+        self.assertIn("contracts", pack["batchSlaContractManager"])
+        self.assertIn("recommendations", pack["aosAffinityAdvisor"])
+        self.assertIn("candidates", pack["dataGrowthArchivingRoi"])
+        self.assertIn("simulations", pack["changeSimulationQueue"])
+        self.assertIn("score", pack["evidenceSla"])
+        self.assertIn("matches", pack["knownIssueMatcher"])
+        self.assertIn("score", pack["operationalMaturityScore"])
+        self.assertIn("decision", pack["d365MigrationSignalDashboard"])
+
+    def test_recommendation_lifecycle_cli_persists_state(self) -> None:
+        state_file = self.tmp / "lifecycle.json"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "manage_recommendation_lifecycle.py"),
+                "--state-file",
+                str(state_file),
+                "--finding-id",
+                "AXPA-1",
+                "--state",
+                "accepted",
+                "--actor",
+                "unit",
+                "--note",
+                "test",
+            ],
+            cwd=str(PLUGIN_ROOT),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(state_file.read_text(encoding="utf-8"))
+        self.assertEqual(payload["items"]["AXPA-1"]["state"], "accepted")
+        self.assertEqual(payload["audit"][0]["to"], "accepted")
+
+    def test_push_integrations_dry_run_writes_audit_and_dedupes(self) -> None:
+        audit = self.tmp / "push.sqlite"
+        command = [
+            sys.executable,
+            str(SCRIPTS / "push_integrations.py"),
+            "--evidence",
+            str(self.evidence),
+            "--targets",
+            "teams,ado,jira,servicenow,powerbi",
+            "--audit-db",
+            str(audit),
+            "--limit",
+            "2",
+            "--dry-run",
+        ]
+        first = subprocess.run(command, cwd=str(PLUGIN_ROOT), text=True, capture_output=True)
+        second = subprocess.run(command, cwd=str(PLUGIN_ROOT), text=True, capture_output=True)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertTrue(audit.exists())
+        self.assertIn("duplicate-skipped", second.stdout)
 
 
 if __name__ == "__main__":

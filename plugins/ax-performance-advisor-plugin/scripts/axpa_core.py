@@ -12,10 +12,17 @@ import statistics
 import sys
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+_csv_limit = sys.maxsize
+while True:
+    try:
+        csv.field_size_limit(_csv_limit)
+        break
+    except OverflowError:
+        _csv_limit = int(_csv_limit / 10)
 
 SEVERITY_RANK = {
     "critical": 5,
@@ -135,6 +142,26 @@ def to_number(value: Any) -> Any:
         return int(normalized)
     except ValueError:
         return value
+
+
+def parse_ax_datetime(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    for fmt in ("%d.%m.%Y %H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(text[:19], fmt)
+        except ValueError:
+            pass
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def clean_token(value: Any, fallback: str = "unknown") -> str:
+    text = str(value or "").strip()
+    return text if text else fallback
 
 
 def read_csv(path: Path) -> list[dict[str, Any]]:
@@ -448,6 +475,7 @@ def analyze_evidence(root: str | Path) -> list[dict[str, Any]]:
     findings.extend(analyze_deadlocks(evidence))
     findings.extend(analyze_plan_operators(evidence))
     findings.extend(analyze_batch_jobs(evidence))
+    findings.extend(analyze_batch_collisions(evidence))
     findings.extend(analyze_aos_counters(evidence))
     findings.extend(analyze_aif_services(evidence))
     findings.extend(analyze_retail_load(evidence))
@@ -1008,6 +1036,229 @@ def analyze_batch_jobs(evidence: Evidence) -> list[dict[str, Any]]:
                     },
                 )
             )
+    return findings
+
+
+def batch_collision_summary(evidence: Evidence) -> dict[str, Any]:
+    rows = evidence.tables["batch_tasks"] or evidence.tables["batch_jobs"]
+    intervals: list[dict[str, Any]] = []
+    for row in rows:
+        start = parse_ax_datetime(row.get("start_time"))
+        end = parse_ax_datetime(row.get("end_time"))
+        duration = float(row.get("duration_seconds") or 0)
+        if start and not end and duration > 0:
+            end = start + timedelta(seconds=duration)
+        if not start or not end or end <= start:
+            continue
+        name = clean_token(row.get("caption") or row.get("job_name") or row.get("task_id"))
+        intervals.append(
+            {
+                "name": name,
+                "jobId": clean_token(row.get("job_id"), ""),
+                "taskId": clean_token(row.get("task_id"), ""),
+                "group": clean_token(row.get("batch_group")),
+                "company": clean_token(row.get("company")),
+                "aos": clean_token(row.get("aos")),
+                "status": clean_token(row.get("status"), ""),
+                "class": clean_token(row.get("class_name") or row.get("class_number"), ""),
+                "start": start,
+                "end": end,
+                "durationSeconds": duration or (end - start).total_seconds(),
+            }
+        )
+    intervals.sort(key=lambda item: item["start"])
+    if not intervals:
+        return {
+            "taskCount": 0,
+            "collisionCount": 0,
+            "peakConcurrency": 0,
+            "peakWindow": "",
+            "groupCollisions": [],
+            "jobCollisions": [],
+            "shortRunnerStorms": [],
+            "longRunners": [],
+            "recommendations": ["Collect BATCH/BATCHJOB history with start and end timestamps."],
+        }
+
+    events: list[tuple[datetime, int]] = []
+    for item in intervals:
+        events.append((item["start"], 1))
+        events.append((item["end"], -1))
+    active = 0
+    peak = 0
+    peak_time = intervals[0]["start"]
+    for timestamp, delta in sorted(events, key=lambda item: (item[0], -item[1])):
+        active += delta
+        if active > peak:
+            peak = active
+            peak_time = timestamp
+
+    pairs = []
+    group_stats: dict[tuple[str, str], dict[str, Any]] = {}
+    long_runners = sorted([x for x in intervals if x["durationSeconds"] >= 600], key=lambda x: x["durationSeconds"], reverse=True)[:15]
+    for i, left in enumerate(intervals):
+        for right in intervals[i + 1 :]:
+            if right["start"] >= left["end"]:
+                break
+            overlap = (min(left["end"], right["end"]) - max(left["start"], right["start"])).total_seconds()
+            if overlap <= 0:
+                continue
+            same_group = left["group"] == right["group"]
+            same_company = left["company"].lower() == right["company"].lower()
+            if overlap < 30 and not same_group:
+                continue
+            pair = {
+                "left": left["name"],
+                "right": right["name"],
+                "leftGroup": left["group"],
+                "rightGroup": right["group"],
+                "company": left["company"] if same_company else f"{left['company']} / {right['company']}",
+                "overlapSeconds": int(overlap),
+                "window": f"{max(left['start'], right['start']).strftime('%d.%m.%Y %H:%M:%S')} - {min(left['end'], right['end']).strftime('%H:%M:%S')}",
+                "sameGroup": same_group,
+            }
+            pairs.append(pair)
+            key = tuple(sorted([left["group"], right["group"]]))
+            stats = group_stats.setdefault(
+                key,
+                {
+                    "groups": " / ".join(key),
+                    "collisions": 0,
+                    "totalOverlapSeconds": 0,
+                    "maxOverlapSeconds": 0,
+                    "examples": [],
+                },
+            )
+            stats["collisions"] += 1
+            stats["totalOverlapSeconds"] += int(overlap)
+            stats["maxOverlapSeconds"] = max(stats["maxOverlapSeconds"], int(overlap))
+            if len(stats["examples"]) < 5:
+                stats["examples"].append(f"{left['name']} <> {right['name']} ({int(overlap)}s)")
+    pairs.sort(key=lambda item: (item["overlapSeconds"], item["sameGroup"]), reverse=True)
+
+    by_minute: dict[str, list[dict[str, Any]]] = {}
+    for item in intervals:
+        bucket = item["start"].strftime("%Y-%m-%d %H:%M")
+        by_minute.setdefault(bucket, []).append(item)
+    storms = []
+    for bucket, items in by_minute.items():
+        short = [item for item in items if item["durationSeconds"] <= 30]
+        if len(short) >= 5:
+            storms.append(
+                {
+                    "minute": bucket,
+                    "shortTaskCount": len(short),
+                    "groups": sorted({item["group"] for item in short})[:8],
+                    "examples": [item["name"] for item in short[:8]],
+                }
+            )
+    storms.sort(key=lambda item: item["shortTaskCount"], reverse=True)
+
+    live_blocked = [r for r in evidence.tables["ax_live_blocking"] if str(r.get("blocking_session_id") or "").lower() not in {"", "0", "n/a", "none"}]
+    recommendations = []
+    if pairs:
+        recommendations.append("Entzerre die Batch-Gruppen mit den höchsten Überlappungssekunden zuerst; gleiche Gruppe + gleiche Company ist die höchste Priorität.")
+    if peak >= 8:
+        recommendations.append("Prüfe maximale parallele Batch-Threads/AOS-Zuordnung im Peak-Fenster, bevor SQL-Tuning isoliert bewertet wird.")
+    if storms:
+        recommendations.append("Kurzläufer-Stürme bündeln oder in ruhigere Fenster verschieben; viele 0-30s Tasks können Queue-/AOS-Overhead erzeugen.")
+    if live_blocked:
+        recommendations.append("Live-Blocking war während der Messung sichtbar; Batch-Fenster gegen blockierte Sessions und betroffene Tabellen korrelieren.")
+    if not recommendations:
+        recommendations.append("Keine starke Batch-Kollision in den verfügbaren Zeitstempeln; Trendhistorie weiter sammeln.")
+    return {
+        "taskCount": len(intervals),
+        "collisionCount": len(pairs),
+        "peakConcurrency": peak,
+        "peakWindow": peak_time.strftime("%d.%m.%Y %H:%M:%S"),
+        "groupCollisions": sorted(group_stats.values(), key=lambda item: item["totalOverlapSeconds"], reverse=True)[:12],
+        "jobCollisions": pairs[:20],
+        "shortRunnerStorms": storms[:12],
+        "longRunners": [
+            {
+                "name": item["name"],
+                "group": item["group"],
+                "company": item["company"],
+                "durationSeconds": int(item["durationSeconds"]),
+                "window": f"{item['start'].strftime('%d.%m.%Y %H:%M:%S')} - {item['end'].strftime('%H:%M:%S')}",
+            }
+            for item in long_runners
+        ],
+        "liveBlockedRows": len(live_blocked),
+        "recommendations": recommendations,
+    }
+
+
+def analyze_batch_collisions(evidence: Evidence) -> list[dict[str, Any]]:
+    summary = batch_collision_summary(evidence)
+    findings = []
+    if summary["collisionCount"] >= 10 or summary["peakConcurrency"] >= 8:
+        findings.append(
+            mk_finding(
+                evidence,
+                "AX batch collision hotspot detected",
+                "high" if summary["peakConcurrency"] >= 12 or summary["collisionCount"] >= 50 else "medium",
+                "high",
+                "tune-now",
+                "BATCH",
+                "Batch windows overlap materially; rescheduling may reduce SQL waits, blocking and AOS queue pressure.",
+                "batch_tasks",
+                "collision_count",
+                summary["collisionCount"],
+                10,
+                "Multiple AX batch tasks overlap in the same execution window.",
+                "batch-collision-and-read-pressure",
+                {
+                    "axContext": {"batchJobs": [x["left"] for x in summary["jobCollisions"][:5]], "module": "Batch"},
+                    "batchCollision": summary,
+                    "validation": {
+                        "successMetric": "Reduce peak concurrency, overlap seconds, and affected batch runtime in the next comparable run.",
+                        "rollback": "Restore previous AX batch recurrence/group/AOS assignments from the approved change record.",
+                    },
+                },
+            )
+        )
+    for group in summary["groupCollisions"][:5]:
+        if group["totalOverlapSeconds"] < 300:
+            continue
+        findings.append(
+            mk_finding(
+                evidence,
+                f"AX batch group collision: {group['groups']}",
+                "high" if group["totalOverlapSeconds"] >= 1800 else "medium",
+                "high",
+                "tune-now",
+                "BATCH",
+                "Move or sequence one of the colliding batch groups and validate runtime, SQL waits and blocking after the change.",
+                "batch_tasks",
+                "group_overlap_seconds",
+                group["totalOverlapSeconds"],
+                300,
+                "Batch groups repeatedly overlap and compete for AOS/SQL resources.",
+                "batch-collision-and-read-pressure",
+                {"batchGroupCollision": group, "axContext": {"batchJobs": group.get("examples", []), "module": "Batch"}},
+            )
+        )
+    if summary["shortRunnerStorms"]:
+        storm = summary["shortRunnerStorms"][0]
+        findings.append(
+            mk_finding(
+                evidence,
+                f"AX short-running batch storm around {storm['minute']}",
+                "medium",
+                "high",
+                "tune-now",
+                "BATCH",
+                "Group tiny recurring tasks or spread their recurrence to reduce queue churn and AOS scheduling overhead.",
+                "batch_tasks",
+                "short_task_count_per_minute",
+                storm["shortTaskCount"],
+                5,
+                "Many very short tasks start in the same minute.",
+                "batch-collision-and-read-pressure",
+                {"batchShortRunnerStorm": storm, "axContext": {"batchJobs": storm.get("examples", []), "module": "Batch"}},
+            )
+        )
     return findings
 
 

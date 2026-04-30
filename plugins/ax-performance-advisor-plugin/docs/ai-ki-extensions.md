@@ -10,6 +10,11 @@ This pack adds AI-ready artifacts while staying evidence-grounded and auditable.
 - LLM context pack with source policy and top findings.
 - Embedding-friendly evidence chunks.
 - Confidence calibration from declared confidence and evidence count.
+- Batch reschedule simulator from real AX batch overlaps.
+- Root-cause bridge from batch collision evidence to SQL/AOS pressure hypotheses.
+- Next-best-evidence planner.
+- Change ROI prioritizer.
+- Admin copilot questions with safe execution boundaries.
 
 ## Run
 

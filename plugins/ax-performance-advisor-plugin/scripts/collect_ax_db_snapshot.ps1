@@ -18,6 +18,10 @@ function Invoke-AxpaSqlQuery {
   try {
     [void]$adapter.Fill($table)
     $table | Export-Csv -NoTypeInformation -Encoding UTF8 -Path (Join-Path $OutputDirectory $OutputFile)
+    $errorPath = Join-Path $OutputDirectory ($OutputFile + ".error.csv")
+    if (Test-Path $errorPath) {
+      Remove-Item -LiteralPath $errorPath -Force
+    }
   }
   catch {
     [pscustomobject]@{
@@ -57,6 +61,35 @@ function Get-AxpaColumnExpression {
     }
   }
   return "CAST($Default AS nvarchar(200)) AS $Alias"
+}
+
+function Get-AxpaSourceStatus {
+  param([string]$Source, [string]$TableName, [string]$ColumnName, [string]$File, [string]$Note)
+  $hasTable = Test-AxpaColumn -TableName $TableName -ColumnName $ColumnName
+  $filePath = Join-Path $OutputDirectory $File
+  $errorPath = Join-Path $OutputDirectory ($File + ".error.csv")
+  $status = "missing"
+  if ($hasTable -and (Test-Path $errorPath)) {
+    $status = "error"
+  }
+  elseif ($hasTable -and (Test-Path $filePath)) {
+    $fileInfo = Get-Item -LiteralPath $filePath
+    if ($fileInfo.Length -le 3) {
+      $status = "empty"
+    }
+    else {
+      $status = "present"
+    }
+  }
+  elseif ($hasTable) {
+    $status = "available-no-output"
+  }
+  [pscustomobject]@{
+    source = $Source
+    file = $File
+    status = $status
+    note = $Note
+  }
 }
 
 Invoke-AxpaSqlQuery -OutputFile "ax_schema_discovery.csv" -Query @"
@@ -110,7 +143,11 @@ BEGIN
     CAST(bj.STATUS AS nvarchar(40)) AS status,
     bj.STARTDATETIME AS start_time,
     bj.ENDDATETIME AS end_time,
-    DATEDIFF(second, bj.STARTDATETIME, bj.ENDDATETIME) AS duration_seconds,
+    CASE
+      WHEN bj.STARTDATETIME IS NULL OR bj.ENDDATETIME IS NULL OR bj.ENDDATETIME < bj.STARTDATETIME THEN 0
+      WHEN DATEDIFF(day, bj.STARTDATETIME, bj.ENDDATETIME) > 3660 THEN 0
+      ELSE DATEDIFF(minute, bj.STARTDATETIME, bj.ENDDATETIME) * 60
+    END AS duration_seconds,
     0 AS sla_target_seconds
   FROM dbo.BATCHJOB bj
   WHERE bj.STARTDATETIME >= DATEADD(day, -$Days, SYSUTCDATETIME())
@@ -131,7 +168,11 @@ BEGIN
     b.STATUS AS status,
     b.STARTDATETIME AS start_time,
     b.ENDDATETIME AS end_time,
-    DATEDIFF(second, b.STARTDATETIME, b.ENDDATETIME) AS duration_seconds
+    CASE
+      WHEN b.STARTDATETIME IS NULL OR b.ENDDATETIME IS NULL OR b.ENDDATETIME < b.STARTDATETIME THEN 0
+      WHEN DATEDIFF(day, b.STARTDATETIME, b.ENDDATETIME) > 3660 THEN 0
+      ELSE DATEDIFF(minute, b.STARTDATETIME, b.ENDDATETIME) * 60
+    END AS duration_seconds
   FROM dbo.BATCH b
   WHERE b.STARTDATETIME >= DATEADD(day, -$Days, SYSUTCDATETIME())
   ORDER BY b.STARTDATETIME DESC;
@@ -185,11 +226,11 @@ END
 "@
 
 $sourceStatus = @(
-  [pscustomobject]@{ source="BATCHJOB"; file="batch_jobs.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.BATCHJOB" -ColumnName "RECID"){"present"}else{"missing"}); note="AX batch job table" },
-  [pscustomobject]@{ source="BATCH"; file="batch_tasks.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.BATCH" -ColumnName "RECID"){"present"}else{"missing"}); note="AX batch task table" },
-  [pscustomobject]@{ source="SYSCLIENTSESSIONS"; file="user_sessions.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.SYSCLIENTSESSIONS" -ColumnName "RECID"){"present"}else{"missing"}); note="AX user session table" },
-  [pscustomobject]@{ source="AIFMESSAGELOG"; file="aif_services.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.AIFMESSAGELOG" -ColumnName "RECID"){"present"}else{"missing"}); note="AX AIF message table" },
-  [pscustomobject]@{ source="RETAILTRANSACTIONTABLE"; file="retail_load.csv"; status=$(if(Test-AxpaColumn -TableName "dbo.RETAILTRANSACTIONTABLE" -ColumnName "RECID"){"present"}else{"missing"}); note="AX retail transaction table" }
+  Get-AxpaSourceStatus -Source "BATCHJOB" -TableName "dbo.BATCHJOB" -ColumnName "RECID" -File "batch_jobs.csv" -Note "AX batch job table"
+  Get-AxpaSourceStatus -Source "BATCH" -TableName "dbo.BATCH" -ColumnName "RECID" -File "batch_tasks.csv" -Note "AX batch task table"
+  Get-AxpaSourceStatus -Source "SYSCLIENTSESSIONS" -TableName "dbo.SYSCLIENTSESSIONS" -ColumnName "RECID" -File "user_sessions.csv" -Note "AX user session table"
+  Get-AxpaSourceStatus -Source "AIFMESSAGELOG" -TableName "dbo.AIFMESSAGELOG" -ColumnName "RECID" -File "aif_services.csv" -Note "AX AIF message table"
+  Get-AxpaSourceStatus -Source "RETAILTRANSACTIONTABLE" -TableName "dbo.RETAILTRANSACTIONTABLE" -ColumnName "RECID" -File "retail_load.csv" -Note "AX retail transaction table"
 )
 $sourceStatus | Export-Csv -NoTypeInformation -Encoding UTF8 -Path (Join-Path $OutputDirectory "source_status.csv")
 
