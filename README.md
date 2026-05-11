@@ -14,6 +14,18 @@ AX Performance Advisor collects SQL Server, AX batch, AOS, Trace Parser, Dynamic
 
 ## Quick Start
 
+Install directly into Codex from the GitHub release:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/download/v0.1.0/install_from_github.ps1" `
+  -OutFile ".\install_from_github.ps1"
+
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
+```
+
+The installer downloads the release ZIP, verifies the SHA256 manifest, installs the plugin as a local Codex marketplace, updates `%USERPROFILE%\.codex\config.toml`, and runs a lightweight dashboard smoke test. Restart Codex after installation.
+
 Run against anonymized sample evidence:
 
 ```powershell

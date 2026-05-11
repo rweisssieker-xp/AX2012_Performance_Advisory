@@ -12,6 +12,18 @@ AX Performance Advisor is a Codex plugin concept for Dynamics AX 2012 R3 environ
 - `docs/testing-guide.md`: local and CI validation steps.
 - `docs/github-release-checklist.md`: GitHub release and PR checklist.
 
+## Install From GitHub Release
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/download/v0.1.0/install_from_github.ps1" `
+  -OutFile ".\install_from_github.ps1"
+
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
+```
+
+The installer downloads the ZIP and manifest from the release, verifies the SHA256 checksum, installs the plugin into the local Codex marketplace folder, enables it in `%USERPROFILE%\.codex\config.toml`, and runs a sample dashboard smoke test. Restart Codex after installation.
+
 ## Distribution Build
 
 ```powershell
