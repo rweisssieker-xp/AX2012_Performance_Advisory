@@ -1,9 +1,9 @@
 {
   "package": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
   "version": "0.1.0",
-  "createdAt": "2026-05-11T12:24:55+00:00",
-  "sha256": "b8edae56a6b90f5cfc1a8c5ed108a3fa1daac78388e11fe74d4ef64c50d4c550",
-  "fileCount": 293,
+  "createdAt": "2026-05-11T12:29:09+00:00",
+  "sha256": "64437dfe6cca77bb7cf999c4ca6b12559eae957e2ffde110e6587f6c93209d53",
+  "fileCount": 294,
   "excludedDirectories": [
     ".git",
     ".pytest_cache",
@@ -125,8 +125,13 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/distribution-guide.md",
-      "bytes": 2387,
-      "sha256": "69a3f309f618686fe5945928f8a11532a529e656a3918b72f949dedace3517f9"
+      "bytes": 2601,
+      "sha256": "0975c9c2763e5503f11fcad1638c19d123a1ef3be2e7a6b1f825b66a770c0f7a"
+    },
+    {
+      "path": "ax-performance-advisor-plugin/docs/documentation-flow-check.md",
+      "bytes": 1922,
+      "sha256": "e7d0f465b5a7b2998fe82f20dec4deb1106e044e78177ad25f562263e9e43801"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/enterprise-observability.md",
@@ -160,8 +165,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/INDEX.md",
-      "bytes": 2446,
-      "sha256": "a88134bd1b4f6d717e1b8f443b5cd90cfa0066c4ab1c9880d45d1e35c887ed95"
+      "bytes": 2565,
+      "sha256": "c65e409322f1f0cf31349d1037998324cc40e83753516649fb06e0040b5041f8"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/learning-extensions.md",
@@ -210,8 +215,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/release-runbook.md",
-      "bytes": 2531,
-      "sha256": "526161f0774c83425d742b762c7ff2bd7f9fb819092162d65aee2a8412f4d507"
+      "bytes": 3091,
+      "sha256": "563a8f8c6002a5680b425e2dd3acd989201038e51fd10aae5541bf11036c2ccb"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/security-model.md",
@@ -270,8 +275,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/INSTALL.md",
-      "bytes": 5846,
-      "sha256": "90ed7e58431db337948c2b723c82a8f7e94ccf18c375e8e0f5ebf498fd060fe7"
+      "bytes": 6671,
+      "sha256": "16325be5d0eb766172140e44ed51a027649afb6096d4cf975f1ac78f9156e0b2"
     },
     {
       "path": "ax-performance-advisor-plugin/LICENSE",

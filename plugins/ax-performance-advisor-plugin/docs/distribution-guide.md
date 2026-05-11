@@ -34,11 +34,13 @@ The ZIP intentionally excludes:
 
 See the full installation guide in [`../INSTALL.md`](../INSTALL.md).
 
-Unzip to a controlled tools directory:
+Minimum recipient install:
 
 ```powershell
+New-Item -ItemType Directory -Force C:\Tools\AXPA | Out-Null
 Expand-Archive .\ax-performance-advisor-plugin-0.1.0.zip -DestinationPath C:\Tools\AXPA -Force
 cd C:\Tools\AXPA\ax-performance-advisor-plugin
+python -m pip install -r .\requirements.txt
 python -m pytest .\tests -q
 ```
 
@@ -71,6 +73,12 @@ The plugin manifest points to `skills/`, `.mcp.json`, and `.app.json`.
 ## GitHub / Azure DevOps Distribution
 
 Use the repository as the source of truth and attach the ZIP plus manifest files to a release.
+
+Current GitHub release:
+
+```text
+https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/tag/v0.1.0
+```
 
 Recommended release artifacts:
 

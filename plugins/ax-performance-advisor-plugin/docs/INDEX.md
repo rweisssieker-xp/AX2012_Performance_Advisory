@@ -13,6 +13,7 @@ This index is the starting point for using, operating, extending, and releasing 
 - [Threat Model](threat-model.md): risks and mitigations for evidence, scripts, dashboards, and integrations.
 - [Release Runbook](release-runbook.md): package, validate, and publish the plugin.
 - [Distribution Guide](distribution-guide.md): ZIP, GitHub/Azure DevOps, and Codex plugin distribution.
+- [Documentation Flow Check](documentation-flow-check.md): audited reader flow and remaining documentation follow-ups.
 
 ## Feature Areas
 

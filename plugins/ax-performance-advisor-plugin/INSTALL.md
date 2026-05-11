@@ -17,7 +17,11 @@ The plugin is advisory-first. It writes local evidence, dashboard and report fil
 
 ## 1. Download The Release
 
-From GitHub Releases, download:
+From GitHub Releases, download the release assets:
+
+```text
+https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/tag/v0.1.0
+```
 
 - `ax-performance-advisor-plugin-0.1.0.zip`
 - `ax-performance-advisor-plugin-0.1.0.zip.manifest.json`
@@ -28,6 +32,23 @@ Recommended target directory:
 
 ```text
 C:\Tools\AXPA
+```
+
+Recommended data directories outside the plugin folder:
+
+```text
+C:\AXPA\evidence
+C:\AXPA\out
+```
+
+Keeping evidence/output outside the plugin folder prevents accidental data loss during updates.
+
+Optional checksum verification:
+
+```powershell
+$manifest = Get-Content .\ax-performance-advisor-plugin-0.1.0.zip.manifest.json -Raw | ConvertFrom-Json
+$actual = (Get-FileHash .\ax-performance-advisor-plugin-0.1.0.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $manifest.sha256) { throw "ZIP checksum mismatch" }
 ```
 
 ## 2. Unpack
@@ -64,13 +85,17 @@ python --version
 python -m json.tool .\.codex-plugin\plugin.json > $null
 python -m json.tool .\.mcp.json > $null
 python -m compileall .\scripts .\tests
-python -m pytest .\tests -q
 ```
 
 If `pytest` is missing:
 
 ```powershell
 python -m pip install -r .\requirements.txt
+```
+
+Run the test suite:
+
+```powershell
 python -m pytest .\tests -q
 ```
 
@@ -127,7 +152,7 @@ Create an evidence folder per environment and run collectors with read-only cred
 Example:
 
 ```powershell
-$evidence = ".\evidence\bras3333-$(Get-Date -Format yyyyMMdd-HHmmss)"
+$evidence = "C:\AXPA\evidence\bras3333-$(Get-Date -Format yyyyMMdd-HHmmss)"
 New-Item -ItemType Directory -Force $evidence | Out-Null
 
 .\scripts\collect_sql_snapshot.ps1 `
@@ -149,11 +174,12 @@ Only use this with an approved read-only account. Do not run collectors with sch
 
 ```powershell
 $run = Split-Path $evidence -Leaf
-New-Item -ItemType Directory -Force ".\out\$run" | Out-Null
+$out = "C:\AXPA\out\$run"
+New-Item -ItemType Directory -Force $out | Out-Null
 
 python .\scripts\generate_dashboard.py `
   --evidence $evidence `
-  --output ".\out\$run\$run-dashboard.html"
+  --output "$out\$run-dashboard.html"
 ```
 
 Optional HTTP smoke test:
@@ -161,11 +187,11 @@ Optional HTTP smoke test:
 ```powershell
 python .\scripts\qa_dashboard_http.py `
   --root . `
-  --dashboard ".\out\$run\$run-dashboard.html" `
+  --dashboard "$out\$run-dashboard.html" `
   --require "CEO Cockpit" `
   --require "Operator Cockpit" `
   --require "Batch Control Tower" `
-  --output ".\out\$run\dashboard-http-qa.json"
+  --output "$out\dashboard-http-qa.json"
 ```
 
 ## 8. Update
@@ -179,7 +205,7 @@ Expand-Archive `
   -Force
 ```
 
-Keep old `evidence/` and `out/` folders outside the plugin directory if you want them to survive updates.
+If you followed the recommended `C:\AXPA\evidence` and `C:\AXPA\out` layout, updates do not touch collected evidence or generated dashboards. If you stored evidence/output inside the old plugin folder, copy them out before deleting `ax-performance-advisor-plugin-old`.
 
 ## 9. Uninstall
 
