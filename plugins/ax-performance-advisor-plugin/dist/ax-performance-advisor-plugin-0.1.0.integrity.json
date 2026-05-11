@@ -1,6 +1,6 @@
 {
   "root": ".",
-  "fileCount": 304,
+  "fileCount": 305,
   "files": [
     {
       "path": ".app.json",
@@ -99,23 +99,23 @@
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.integrity.json",
-      "sha256": "783431155161cd60135f2d004783249c7c38a174da6dda18f37a203a429af0ff",
-      "bytes": 52655
+      "sha256": "ac27ae7cb46d4851a16c49884290027e048a40e72e8abf5c57bd35bc9ed976b3",
+      "bytes": 52828
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.sbom.json",
-      "sha256": "0403ce0badfeb85eb52d361402efef9e5f061a6259ceec1b803c042ebcd7e1a1",
-      "bytes": 58943
+      "sha256": "20ffd9ad83f0742f2c9e2d5eef9e9ac68e49f22dab3c181c619d20cd4ecaefb1",
+      "bytes": 59137
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
-      "sha256": "b8edae56a6b90f5cfc1a8c5ed108a3fa1daac78388e11fe74d4ef64c50d4c550",
-      "bytes": 413081
+      "sha256": "64437dfe6cca77bb7cf999c4ca6b12559eae957e2ffde110e6587f6c93209d53",
+      "bytes": 414826
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.zip.manifest.json",
-      "sha256": "a504c4a967659635b828515d148a124506bfb85c3f83d605d2fb55ba2d1eebce",
-      "bytes": 59536
+      "sha256": "6a5e6a729b6f657af02647b1b337763146a4969992516bfefcd732d40f8ce70a",
+      "bytes": 59738
     },
     {
       "path": "docs\\action-playbooks.md",
@@ -164,13 +164,13 @@
     },
     {
       "path": "docs\\distribution-guide.md",
-      "sha256": "0975c9c2763e5503f11fcad1638c19d123a1ef3be2e7a6b1f825b66a770c0f7a",
-      "bytes": 2601
+      "sha256": "6904318a2a32ce42a0ee0056dbb85055e81f04234eed05142fed2626b72e72d3",
+      "bytes": 2947
     },
     {
       "path": "docs\\documentation-flow-check.md",
-      "sha256": "e7d0f465b5a7b2998fe82f20dec4deb1106e044e78177ad25f562263e9e43801",
-      "bytes": 1922
+      "sha256": "275915834cf86b49059286d247dba30e1f5018d94bb1c4be04881227d66d2288",
+      "bytes": 1976
     },
     {
       "path": "docs\\enterprise-observability.md",
@@ -254,8 +254,8 @@
     },
     {
       "path": "docs\\release-runbook.md",
-      "sha256": "563a8f8c6002a5680b425e2dd3acd989201038e51fd10aae5541bf11036c2ccb",
-      "bytes": 3091
+      "sha256": "7b34ad38fb971d5e1b3de0ea2e0b30756611954d86bc127a52678bcff94e1287",
+      "bytes": 3146
     },
     {
       "path": "docs\\security-model.md",
@@ -314,8 +314,13 @@
     },
     {
       "path": "INSTALL.md",
-      "sha256": "16325be5d0eb766172140e44ed51a027649afb6096d4cf975f1ac78f9156e0b2",
-      "bytes": 6671
+      "sha256": "938f54a5200818bb6d389d760529f0103a934ee89999beaf4fc639f18461e96b",
+      "bytes": 8216
+    },
+    {
+      "path": "install_from_github.ps1",
+      "sha256": "09d2d779253ab01333952c4b51958579388429d8ef57671c31d8293afb72265c",
+      "bytes": 7050
     },
     {
       "path": "LICENSE",
@@ -1523,5 +1528,5 @@
       "bytes": 52880
     }
   ],
-  "manifestSha256": "4278f6e133038170c0354b17ac7449f60886ae4bd2ffd768fc9d2e9a1a2d5a4b"
+  "manifestSha256": "f65971dec64a482b4f6a6116dd39f2fe4551996b5bf456785feb05630b869bab"
 }

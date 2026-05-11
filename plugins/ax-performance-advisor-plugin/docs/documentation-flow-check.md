@@ -18,6 +18,7 @@ This checklist records the intended end-to-end documentation path for AX Perform
 - [x] Python, PowerShell and pytest prerequisites are documented.
 - [x] Plugin folder layout is documented.
 - [x] Codex plugin manifest location is documented.
+- [x] Direct GitHub-to-Codex installer is documented.
 - [x] MCP manifest location and read-only default are documented.
 - [x] Sample dashboard smoke test is documented.
 - [x] Live evidence collection is documented as read-only.

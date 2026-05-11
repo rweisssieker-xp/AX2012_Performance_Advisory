@@ -23,6 +23,7 @@ From GitHub Releases, download the release assets:
 https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/tag/v0.1.0
 ```
 
+- `install_from_github.ps1`
 - `ax-performance-advisor-plugin-0.1.0.zip`
 - `ax-performance-advisor-plugin-0.1.0.zip.manifest.json`
 - optional: `ax-performance-advisor-plugin-0.1.0.sbom.json`
@@ -52,6 +53,49 @@ if ($actual -ne $manifest.sha256) { throw "ZIP checksum mismatch" }
 ```
 
 ## 2. Unpack
+
+### Option A: Direct Codex Install From GitHub
+
+This downloads the GitHub release ZIP, verifies the SHA256 checksum from the release manifest, installs it as a local Codex marketplace, and enables the plugin in `%USERPROFILE%\.codex\config.toml`.
+
+Download only the installer from the release:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/download/v0.1.0/install_from_github.ps1" `
+  -OutFile ".\install_from_github.ps1"
+```
+
+Run the installer:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1
+```
+
+If PowerShell blocks downloaded scripts, run from a trusted local copy of this repository or use Option B below.
+
+Useful options:
+
+```powershell
+# Replace an existing install
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
+
+# Install without editing Codex config.toml
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -NoConfigUpdate
+
+# Install into another Codex home for testing
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -CodexHome C:\Temp\codex-home -Force
+```
+
+Default target:
+
+```text
+%USERPROFILE%\.codex\plugins\marketplaces\ax-performance-advisory\plugins\ax-performance-advisor-plugin
+```
+
+Restart Codex after installation so the local marketplace and plugin are reloaded.
+
+### Option B: Manual ZIP Install
 
 ```powershell
 New-Item -ItemType Directory -Force C:\Tools\AXPA | Out-Null
@@ -123,6 +167,7 @@ The unpacked folder already contains the Codex plugin manifest:
 
 Use one of these internal approaches:
 
+0. Preferred: run `install_from_github.ps1` to install directly into the local Codex marketplace folder and update `config.toml`.
 1. Keep the plugin under `C:\Tools\AXPA\ax-performance-advisor-plugin` and point Codex/plugin discovery to that folder if your Codex setup supports local plugin paths.
 2. Copy the unpacked folder into your organization's standard Codex plugin directory.
 3. Keep the Git repository as source of truth and let users pull the plugin folder from GitHub/Azure DevOps.

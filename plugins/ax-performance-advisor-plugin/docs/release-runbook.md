@@ -49,6 +49,7 @@ Include:
 - `.codex-plugin/plugin.json`
 - `.mcp.json`
 - `.app.json`
+- `install_from_github.ps1`
 - `skills/`
 - `scripts/`
 - `rules/`
@@ -84,7 +85,7 @@ python .\scripts\build_release_package.py `
   --output .\dist\ax-performance-advisor-plugin-0.1.0.zip
 ```
 
-Attach the ZIP, `.manifest.json`, SBOM, integrity manifest, and `RELEASE_NOTES.md` to the internal release.
+Attach `install_from_github.ps1`, the ZIP, `.manifest.json`, SBOM, integrity manifest, and `RELEASE_NOTES.md` to the internal release.
 
 ## 7. Post-Release Check
 

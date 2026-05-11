@@ -34,6 +34,15 @@ The ZIP intentionally excludes:
 
 See the full installation guide in [`../INSTALL.md`](../INSTALL.md).
 
+Direct Codex install from GitHub release:
+
+```powershell
+Invoke-WebRequest `
+  -Uri "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/download/v0.1.0/install_from_github.ps1" `
+  -OutFile ".\install_from_github.ps1"
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
+```
+
 Minimum recipient install:
 
 ```powershell
@@ -82,6 +91,7 @@ https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/releases/tag/v0.1
 
 Recommended release artifacts:
 
+- `install_from_github.ps1`
 - `ax-performance-advisor-plugin-0.1.0.zip`
 - `ax-performance-advisor-plugin-0.1.0.zip.manifest.json`
 - `ax-performance-advisor-plugin-0.1.0.sbom.json`
