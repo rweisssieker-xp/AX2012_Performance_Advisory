@@ -32,6 +32,12 @@ powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force -Updat
 
 Restart Codex after installation.
 
+Verify that Codex sees the full plugin bundle:
+
+```powershell
+python "$env:USERPROFILE\.codex\plugins\marketplaces\ax-performance-advisory\plugins\ax-performance-advisor-plugin\scripts\check_plugin_install.py"
+```
+
 ## Distribution Build
 
 ```powershell

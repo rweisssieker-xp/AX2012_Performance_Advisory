@@ -1,9 +1,9 @@
 {
   "package": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
   "version": "0.1.0",
-  "createdAt": "2026-05-11T14:22:06+00:00",
-  "sha256": "03fc6411424ff725baf05eab1b1a018af1575f6c2f81f0d355a2f1cc81d5cd09",
-  "fileCount": 295,
+  "createdAt": "2026-05-11T17:48:06+00:00",
+  "sha256": "1c89ddf60b2879e4967df2b57a2dff4751d6003fff8144fc6126d1224092b07c",
+  "fileCount": 296,
   "excludedDirectories": [
     ".git",
     ".pytest_cache",
@@ -20,8 +20,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/.codex-plugin/plugin.json",
-      "bytes": 2808,
-      "sha256": "90ba7787e1ccc2604495e539db97d8124aaea7a265cd3726a6598f306e2fb456"
+      "bytes": 2629,
+      "sha256": "c0e80788a0922ee4dfa926aee2195d821c4690f8e14265c5ea7b28870b2f68e0"
     },
     {
       "path": "ax-performance-advisor-plugin/.github-workflows-release.yml.example",
@@ -125,8 +125,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/distribution-guide.md",
-      "bytes": 3193,
-      "sha256": "b475d725d7c69a8217fe062cdaf54fe6a853418a98d2342fa5403f795c873edb"
+      "bytes": 3392,
+      "sha256": "d0f7fd4ab9b3aae25b9a6d0b6593fb892356f653a75832b7020652c406bb8705"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/documentation-flow-check.md",
@@ -275,13 +275,13 @@
     },
     {
       "path": "ax-performance-advisor-plugin/INSTALL.md",
-      "bytes": 8663,
-      "sha256": "760784fa718afb070de099aa8c1501c32e0c6678f107d04348a25c013900e3b2"
+      "bytes": 8958,
+      "sha256": "cb0d8f0c9bb0f41012888bfe6f82bd67d30687d5b5f722858f51ea7281f4ca6b"
     },
     {
       "path": "ax-performance-advisor-plugin/install_from_github.ps1",
-      "bytes": 9219,
-      "sha256": "543588a98952430d8f815d04f3a7bb3d053d151fbe64cbe4c6c78302540bb5dc"
+      "bytes": 9462,
+      "sha256": "16b03918c1df5c47987f7ec5965fce01c06ee13d0d4895da1ae414372092bb9b"
     },
     {
       "path": "ax-performance-advisor-plugin/LICENSE",
@@ -300,8 +300,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/README.md",
-      "bytes": 23699,
-      "sha256": "6e0da1e0baed4db8565c75e6cebbdd61f8e27d42a46b10769c461b2f5ad5b6c6"
+      "bytes": 23914,
+      "sha256": "ae6a7ff15f7b080b7b6da528407d45be662d0b7a81f7e85ac3f80f4f72950411"
     },
     {
       "path": "ax-performance-advisor-plugin/RELEASE_NOTES.md",
@@ -507,6 +507,11 @@
       "path": "ax-performance-advisor-plugin/scripts/check_performance_budgets.py",
       "bytes": 320,
       "sha256": "784d593ef00ed6b70e15347f3bd6284b52c442566bf92aab8f56700636436a2b"
+    },
+    {
+      "path": "ax-performance-advisor-plugin/scripts/check_plugin_install.py",
+      "bytes": 4980,
+      "sha256": "12473897a98e2bc285ac6507a95fb5695feb9738e2a0819bea9676851d0a2e3d"
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/check_scheduler_health.py",

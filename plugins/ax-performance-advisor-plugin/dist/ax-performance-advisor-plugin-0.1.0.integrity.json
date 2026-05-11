@@ -1,6 +1,6 @@
 {
   "root": ".",
-  "fileCount": 305,
+  "fileCount": 306,
   "files": [
     {
       "path": ".app.json",
@@ -9,8 +9,8 @@
     },
     {
       "path": ".codex-plugin\\plugin.json",
-      "sha256": "90ba7787e1ccc2604495e539db97d8124aaea7a265cd3726a6598f306e2fb456",
-      "bytes": 2808
+      "sha256": "c0e80788a0922ee4dfa926aee2195d821c4690f8e14265c5ea7b28870b2f68e0",
+      "bytes": 2629
     },
     {
       "path": ".github-workflows-release.yml.example",
@@ -99,23 +99,23 @@
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.integrity.json",
-      "sha256": "f746c23c01376e96e6409cf5ff736928d51f60ce6139f751793caae6df4ae6ad",
-      "bytes": 52991
+      "sha256": "ab5e1143119622273cfa7641ad2cd361c948f810501b3d11529c74ea47a4cdae",
+      "bytes": 53163
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.sbom.json",
-      "sha256": "44bdc5d8968a8eeb2bfcc13db88eb9a5f8d6ebf1fdc4a9e367ff3cacdcf5f238",
-      "bytes": 59323
+      "sha256": "63cf57f62f0b37d03a45285270c6415c7832aa895c680d1802fc8d33c050b7ca",
+      "bytes": 59516
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
-      "sha256": "61cf2a9da8b38adf0697d765535587c1ecb5fba65d3073bb89c3f43781a82820",
-      "bytes": 419319
+      "sha256": "63d2e4ef96980303e49fa0e1b48ef4599e48d0a2fefa97545d35997985d8e4e5",
+      "bytes": 421271
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.zip.manifest.json",
-      "sha256": "1721d032a9327eb74bd8496b8d8fbb8b0f474dd71ed1fcf4cdc4c07154faaa5f",
-      "bytes": 59931
+      "sha256": "9e69a107aa093cdddf51b4400daaaadda4a1183e0c6170ffcf84307dbabae5e8",
+      "bytes": 60132
     },
     {
       "path": "docs\\action-playbooks.md",
@@ -164,8 +164,8 @@
     },
     {
       "path": "docs\\distribution-guide.md",
-      "sha256": "b475d725d7c69a8217fe062cdaf54fe6a853418a98d2342fa5403f795c873edb",
-      "bytes": 3193
+      "sha256": "d0f7fd4ab9b3aae25b9a6d0b6593fb892356f653a75832b7020652c406bb8705",
+      "bytes": 3392
     },
     {
       "path": "docs\\documentation-flow-check.md",
@@ -314,13 +314,13 @@
     },
     {
       "path": "INSTALL.md",
-      "sha256": "760784fa718afb070de099aa8c1501c32e0c6678f107d04348a25c013900e3b2",
-      "bytes": 8663
+      "sha256": "cb0d8f0c9bb0f41012888bfe6f82bd67d30687d5b5f722858f51ea7281f4ca6b",
+      "bytes": 8958
     },
     {
       "path": "install_from_github.ps1",
-      "sha256": "543588a98952430d8f815d04f3a7bb3d053d151fbe64cbe4c6c78302540bb5dc",
-      "bytes": 9219
+      "sha256": "16b03918c1df5c47987f7ec5965fce01c06ee13d0d4895da1ae414372092bb9b",
+      "bytes": 9462
     },
     {
       "path": "LICENSE",
@@ -339,8 +339,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "6e0da1e0baed4db8565c75e6cebbdd61f8e27d42a46b10769c461b2f5ad5b6c6",
-      "bytes": 23699
+      "sha256": "ae6a7ff15f7b080b7b6da528407d45be662d0b7a81f7e85ac3f80f4f72950411",
+      "bytes": 23914
     },
     {
       "path": "RELEASE_NOTES.md",
@@ -546,6 +546,11 @@
       "path": "scripts\\check_performance_budgets.py",
       "sha256": "784d593ef00ed6b70e15347f3bd6284b52c442566bf92aab8f56700636436a2b",
       "bytes": 320
+    },
+    {
+      "path": "scripts\\check_plugin_install.py",
+      "sha256": "12473897a98e2bc285ac6507a95fb5695feb9738e2a0819bea9676851d0a2e3d",
+      "bytes": 4980
     },
     {
       "path": "scripts\\check_scheduler_health.py",
@@ -1528,5 +1533,5 @@
       "bytes": 53742
     }
   ],
-  "manifestSha256": "801319ab6904962ef6b82391c9f27c45c19f3ed93c3dd2ed2bc5eca8c8472d43"
+  "manifestSha256": "09bac1e3d1c82d581740aae756eaff197098ffe8e0fe0235e18397e2df9510fa"
 }

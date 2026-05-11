@@ -4,11 +4,11 @@
   "description": "AX 2012 R3 performance advisor that correlates SQL Server, AOS, batch, and AX table evidence into explainable recommendations.",
   "author": {
     "name": "AX Performance Advisory",
-    "email": "maintainer@example.com",
-    "url": "https://example.com/ax-performance-advisory"
+    "email": "maintainer@brasseler.de",
+    "url": "https://github.com/rweisssieker-xp"
   },
-  "homepage": "https://example.com/ax-performance-advisory",
-  "repository": "https://example.com/ax-performance-advisory/repository",
+  "homepage": "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory",
+  "repository": "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory",
   "license": "MIT",
   "keywords": [
     "dynamics-ax-2012",
@@ -44,17 +44,13 @@
       "Forecast",
       "Govern"
     ],
-    "websiteURL": "https://example.com/ax-performance-advisory",
-    "privacyPolicyURL": "https://example.com/privacy",
-    "termsOfServiceURL": "https://example.com/terms",
+    "websiteURL": "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory",
+    "privacyPolicyURL": "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/blob/main/SECURITY.md",
+    "termsOfServiceURL": "https://github.com/rweisssieker-xp/AX2012_Performance_Advisory/blob/main/LICENSE",
     "defaultPrompt": [
       "Run a daily AX 2012 and SQL Server health check from the collected evidence.",
       "Analyze slow AX queries and map them to affected tables, batches, and wait patterns.",
-      "Create a management summary with risks, business impact, and recommended change actions.",
-      "Compare performance before and after a deployment or tuning change.",
-      "Generate an audit-ready evidence pack for the top findings.",
-      "Build a performance debt register with owners, age, recurrence, and next decisions.",
-      "Predict which AX batch or close processes are likely to breach their SLA."
+      "Create a management summary with risks, business impact, and recommended actions."
     ],
     "brandColor": "#2563EB",
     "composerIcon": "./assets/icon.svg",

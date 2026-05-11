@@ -197,7 +197,7 @@ try {
     plugins = @(
       @{
         name = $PluginName
-        category = "Developer Tools"
+        category = "Observability"
         policy = @{
           installation = "AVAILABLE"
           authentication = "ON_INSTALL"
@@ -228,6 +228,10 @@ try {
     Write-Step "Run lightweight plugin validation"
     & python -m json.tool (Join-Path $targetPlugin ".codex-plugin\plugin.json") | Out-Null
     & python (Join-Path $targetPlugin "scripts\generate_dashboard.py") --evidence (Join-Path $targetPlugin "sample\evidence") --output (Join-Path $targetPlugin "out\install-smoke-dashboard.html") | Out-Host
+    $installCheck = Join-Path $targetPlugin "scripts\check_plugin_install.py"
+    if (Test-Path $installCheck) {
+      & python $installCheck --codex-home $CodexHome --marketplace-name $MarketplaceName --plugin-name $PluginName | Out-Host
+    }
   }
   elseif (-not (Test-Command "python")) {
     Write-Warning "Python was not found; skipped smoke validation."

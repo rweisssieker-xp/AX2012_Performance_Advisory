@@ -104,6 +104,18 @@ To enable the plugin manually, review and append the generated snippet:
 
 Restart Codex after installation or after manually updating `config.toml`.
 
+Verify that the installed bundle is registered as a Codex plugin:
+
+```powershell
+python "$env:USERPROFILE\.codex\plugins\marketplaces\ax-performance-advisory\plugins\ax-performance-advisor-plugin\scripts\check_plugin_install.py"
+```
+
+Expected result:
+
+```text
+AXPA plugin install check: ok
+```
+
 ### Option B: Manual ZIP Install
 
 ```powershell
