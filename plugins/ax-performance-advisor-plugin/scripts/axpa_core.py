@@ -1202,6 +1202,7 @@ def batch_collision_summary(evidence: Evidence) -> dict[str, Any]:
         )
     intervals.sort(key=lambda item: item["start"])
     if not intervals:
+        live_blocked = [r for r in evidence.tables["ax_live_blocking"] if str(r.get("blocking_session_id") or "").lower() not in {"", "0", "n/a", "none"}]
         return {
             "taskCount": 0,
             "collisionCount": 0,
@@ -1211,6 +1212,7 @@ def batch_collision_summary(evidence: Evidence) -> dict[str, Any]:
             "jobCollisions": [],
             "shortRunnerStorms": [],
             "longRunners": [],
+            "liveBlockedRows": len(live_blocked),
             "recommendations": ["Collect BATCH/BATCHJOB history with start and end timestamps."],
         }
 

@@ -356,6 +356,25 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertTrue(summary["shortRunnerStorms"])
         self.assertTrue(any("AX batch group collision" in f["title"] or "AX short-running batch storm" in f["title"] for f in findings))
 
+    def test_batch_collision_summary_keeps_live_blocked_rows_without_batch_intervals(self) -> None:
+        evidence = self.tmp / "evidence-no-batch-intervals"
+        evidence.mkdir()
+        (evidence / "batch_tasks.csv").write_text(
+            "task_id,job_id,class_number,caption,batch_group,company,status,start_time,end_time,duration_seconds\n"
+            "1,10,100,No end,INVENT,GBL,4,2026-05-11 14:00:00,,0\n",
+            encoding="utf-8",
+        )
+        (evidence / "ax_live_blocking.csv").write_text(
+            "session_id,blocking_session_id,program_name,statement_text\n"
+            "12,99,Microsoft Dynamics AX,SELECT 1\n",
+            encoding="utf-8",
+        )
+
+        summary = batch_collision_summary(load_evidence(evidence))
+
+        self.assertEqual(summary["taskCount"], 0)
+        self.assertEqual(summary["liveBlockedRows"], 1)
+
     def test_pipeline_orchestrator_analyze_only_writes_manifest(self) -> None:
         evidence = self.tmp / "evidence"
         out = self.tmp / "out"
