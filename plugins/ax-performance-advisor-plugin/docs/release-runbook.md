@@ -60,3 +60,24 @@ Exclude:
 - `out/`
 - `__pycache__/`
 - credentials, connection strings, server secrets, raw customer data
+
+## 6. Build Distribution Artifacts
+
+Run from `plugins/ax-performance-advisor-plugin`:
+
+```powershell
+python .\scripts\build_sbom.py `
+  --root . `
+  --output .\dist\ax-performance-advisor-plugin-0.1.0.sbom.json
+
+python .\scripts\plugin_integrity.py `
+  --root . `
+  --output .\dist\ax-performance-advisor-plugin-0.1.0.integrity.json
+
+python .\scripts\build_release_package.py `
+  --root . `
+  --version 0.1.0 `
+  --output .\dist\ax-performance-advisor-plugin-0.1.0.zip
+```
+
+Attach the ZIP, `.manifest.json`, SBOM, integrity manifest, and `RELEASE_NOTES.md` to the internal release.

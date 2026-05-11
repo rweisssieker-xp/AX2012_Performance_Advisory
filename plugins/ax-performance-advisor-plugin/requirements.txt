@@ -1,0 +1,3 @@
+# AX Performance Advisor currently uses the Python standard library for the local analyzers.
+# pytest is only required for development and release verification.
+pytest>=8.0

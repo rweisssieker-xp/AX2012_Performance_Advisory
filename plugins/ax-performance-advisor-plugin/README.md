@@ -7,8 +7,20 @@ AX Performance Advisor is a Codex plugin concept for Dynamics AX 2012 R3 environ
 - `docs/INDEX.md`: complete documentation map.
 - `docs/architecture.md`: component and data-flow overview.
 - `docs/operations-guide.md`: read-only collection and reporting workflow.
+- `docs/distribution-guide.md`: internal ZIP, GitHub/Azure DevOps, and Codex plugin distribution.
 - `docs/testing-guide.md`: local and CI validation steps.
 - `docs/github-release-checklist.md`: GitHub release and PR checklist.
+
+## Distribution Build
+
+```powershell
+python -m pytest .\tests -q
+python .\scripts\build_sbom.py --root . --output .\dist\ax-performance-advisor-plugin-0.1.0.sbom.json
+python .\scripts\plugin_integrity.py --root . --output .\dist\ax-performance-advisor-plugin-0.1.0.integrity.json
+python .\scripts\build_release_package.py --root . --version 0.1.0 --output .\dist\ax-performance-advisor-plugin-0.1.0.zip
+```
+
+The release ZIP excludes local `evidence/`, `out/`, `dist/`, caches, logs, and Python bytecode.
 
 ## Core USP
 

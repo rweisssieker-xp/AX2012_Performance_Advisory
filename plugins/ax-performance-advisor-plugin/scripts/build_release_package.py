@@ -4,20 +4,47 @@ import argparse
 import hashlib
 import json
 import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 
-EXCLUDE = {"out", "evidence", "__pycache__"}
+EXCLUDE_DIRS = {
+    ".git",
+    ".pytest_cache",
+    "__pycache__",
+    "dist",
+    "evidence",
+    "out",
+}
+EXCLUDE_SUFFIXES = {".pyc", ".pyo", ".log", ".tmp"}
+EXCLUDE_NAMES = {
+    ".coverage",
+}
 
 
 def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def include_file(root: Path, path: Path) -> bool:
+    rel = path.relative_to(root)
+    if not path.is_file():
+        return False
+    if any(part in EXCLUDE_DIRS for part in rel.parts):
+        return False
+    if path.suffix.lower() in EXCLUDE_SUFFIXES:
+        return False
+    if path.name in EXCLUDE_NAMES:
+        return False
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build signed/checksummed AXPA plugin release package.")
     parser.add_argument("--root", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--version", default="")
+    parser.add_argument("--prefix", default="ax-performance-advisor-plugin")
     args = parser.parse_args()
     root = Path(args.root)
     output = Path(args.output)
@@ -25,12 +52,21 @@ def main() -> int:
     files = []
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as z:
         for path in sorted(root.rglob("*")):
-            if not path.is_file() or any(part in EXCLUDE for part in path.relative_to(root).parts):
+            if not include_file(root, path):
                 continue
             rel = path.relative_to(root).as_posix()
-            z.write(path, rel)
-            files.append({"path": rel, "bytes": path.stat().st_size, "sha256": sha(path)})
-    manifest = {"package": str(output), "sha256": sha(output), "fileCount": len(files), "files": files}
+            zip_rel = f"{args.prefix}/{rel}" if args.prefix else rel
+            z.write(path, zip_rel)
+            files.append({"path": zip_rel, "bytes": path.stat().st_size, "sha256": sha(path)})
+    manifest = {
+        "package": str(output),
+        "version": args.version,
+        "createdAt": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "sha256": sha(output),
+        "fileCount": len(files),
+        "excludedDirectories": sorted(EXCLUDE_DIRS),
+        "files": files,
+    }
     manifest_path = output.with_suffix(output.suffix + ".manifest.json")
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote release package {output}")
