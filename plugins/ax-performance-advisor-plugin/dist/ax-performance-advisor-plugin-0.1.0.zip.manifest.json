@@ -1,8 +1,8 @@
 {
   "package": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
   "version": "0.1.0",
-  "createdAt": "2026-05-11T12:36:56+00:00",
-  "sha256": "75d2b12b542acaeda30d742fbff7b8d3207b76795f04e809440674281c6b498a",
+  "createdAt": "2026-05-11T12:48:22+00:00",
+  "sha256": "7373e8a6270c74dca5b11e6faf33180e73726b046850fe8e67d26a66029b0aab",
   "fileCount": 295,
   "excludedDirectories": [
     ".git",
@@ -300,8 +300,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/README.md",
-      "bytes": 22846,
-      "sha256": "dff2868a771a4e4ae795e61b03b318e68ff84fee4f80f7be8900a69b803d116f"
+      "bytes": 23433,
+      "sha256": "a80d10eb435e4b4358f6c98eec4ae15fef06d5f7a9d13afa1a400d0dbcc5c478"
     },
     {
       "path": "ax-performance-advisor-plugin/RELEASE_NOTES.md",

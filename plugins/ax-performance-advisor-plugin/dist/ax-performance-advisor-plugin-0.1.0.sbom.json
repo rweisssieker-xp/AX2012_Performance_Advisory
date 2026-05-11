@@ -118,26 +118,26 @@
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.integrity.json",
-      "sha256": "ac27ae7cb46d4851a16c49884290027e048a40e72e8abf5c57bd35bc9ed976b3",
-      "bytes": 52828,
+      "sha256": "aa467cff85f39bf36c5815b99764e33e5d53ed14cff80d9a7026a738419c01bc",
+      "bytes": 52991,
       "type": ".json"
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.sbom.json",
-      "sha256": "20ffd9ad83f0742f2c9e2d5eef9e9ac68e49f22dab3c181c619d20cd4ecaefb1",
-      "bytes": 59137,
+      "sha256": "d3604bebdcb6ae89df1465718b7bbd04c16df50448a9064775803b077d5d26c8",
+      "bytes": 59323,
       "type": ".json"
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.zip",
-      "sha256": "64437dfe6cca77bb7cf999c4ca6b12559eae957e2ffde110e6587f6c93209d53",
-      "bytes": 414826,
+      "sha256": "75d2b12b542acaeda30d742fbff7b8d3207b76795f04e809440674281c6b498a",
+      "bytes": 418014,
       "type": ".zip"
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.zip.manifest.json",
-      "sha256": "6a5e6a729b6f657af02647b1b337763146a4969992516bfefcd732d40f8ce70a",
-      "bytes": 59738,
+      "sha256": "6b43bb7a06c4bdbcf3bfad747e61feace3ffe84e78d467cfb3f1d6f70def3ff8",
+      "bytes": 59931,
       "type": ".json"
     },
     {
@@ -406,8 +406,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "dff2868a771a4e4ae795e61b03b318e68ff84fee4f80f7be8900a69b803d116f",
-      "bytes": 22846,
+      "sha256": "a80d10eb435e4b4358f6c98eec4ae15fef06d5f7a9d13afa1a400d0dbcc5c478",
+      "bytes": 23433,
       "type": ".md"
     },
     {
