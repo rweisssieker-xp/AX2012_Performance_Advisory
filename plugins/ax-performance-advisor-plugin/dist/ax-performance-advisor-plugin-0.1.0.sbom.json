@@ -1,6 +1,6 @@
 {
   "format": "AXPA-SBOM-0.1",
-  "componentCount": 298,
+  "componentCount": 303,
   "components": [
     {
       "path": ".app.json",
@@ -117,6 +117,30 @@
       "type": ".json"
     },
     {
+      "path": "dist/ax-performance-advisor-plugin-0.1.0.integrity.json",
+      "sha256": "a21be9589b4896102de65f30c88232991a4a6f2a4019d6f88f2a573a86210591",
+      "bytes": 51729,
+      "type": ".json"
+    },
+    {
+      "path": "dist/ax-performance-advisor-plugin-0.1.0.sbom.json",
+      "sha256": "e7c45b410234d0e45c3095906b151bffafa98cda4c255c7b440757a9e32c4b37",
+      "bytes": 57904,
+      "type": ".json"
+    },
+    {
+      "path": "dist/ax-performance-advisor-plugin-0.1.0.zip",
+      "sha256": "b4a2ecf2d02c7efc7961ec4be3899fe43ff77ee825070418014bd178a4a9a860",
+      "bytes": 410571,
+      "type": ".zip"
+    },
+    {
+      "path": "dist/ax-performance-advisor-plugin-0.1.0.zip.manifest.json",
+      "sha256": "1de062e1b897dbd4326c8d32d08280d24b09c123ef37522259a205b9b8102286",
+      "bytes": 59356,
+      "type": ".json"
+    },
+    {
       "path": "docs/action-playbooks.md",
       "sha256": "1c4ba9a6c53c73291b8cff0403b4500b4e08333bdbe456e99301c0d5a578ac4b",
       "bytes": 3716,
@@ -172,8 +196,8 @@
     },
     {
       "path": "docs/distribution-guide.md",
-      "sha256": "1753402c7255e4f35d2d2258b26390b052dbd52b2f34b2b1454c4b003aa12484",
-      "bytes": 2317,
+      "sha256": "69a3f309f618686fe5945928f8a11532a529e656a3918b72f949dedace3517f9",
+      "bytes": 2387,
       "type": ".md"
     },
     {
@@ -214,8 +238,8 @@
     },
     {
       "path": "docs/INDEX.md",
-      "sha256": "62144a50894898539b7f8bd5d0db65d729079640b55d17333ace86f1fc7aca26",
-      "bytes": 2340,
+      "sha256": "a88134bd1b4f6d717e1b8f443b5cd90cfa0066c4ab1c9880d45d1e35c887ed95",
+      "bytes": 2446,
       "type": ".md"
     },
     {
@@ -345,6 +369,12 @@
       "type": ".md"
     },
     {
+      "path": "INSTALL.md",
+      "sha256": "90ed7e58431db337948c2b723c82a8f7e94ccf18c375e8e0f5ebf498fd060fe7",
+      "bytes": 5846,
+      "type": ".md"
+    },
+    {
       "path": "LICENSE",
       "sha256": "2370fe112704c168085619d142c5ec1f1410d35903b8d7393a9479441ad8f22f",
       "bytes": 1080,
@@ -364,14 +394,14 @@
     },
     {
       "path": "README.md",
-      "sha256": "b1e948fbbd42f21ecc8c1b5aa2650c0e4e378212173e6da5b5a44b42f5708d3a",
-      "bytes": 22751,
+      "sha256": "dff2868a771a4e4ae795e61b03b318e68ff84fee4f80f7be8900a69b803d116f",
+      "bytes": 22846,
       "type": ".md"
     },
     {
       "path": "RELEASE_NOTES.md",
-      "sha256": "1d2bb40bd995e4486c208779822ad4fb2df0f893b8353c7a113dbaf9609d3ae5",
-      "bytes": 1136,
+      "sha256": "6632a12930c2dd9df725ceeca650bca1b918730c78dbb82ea7224fa6c7780893",
+      "bytes": 1227,
       "type": ".md"
     },
     {

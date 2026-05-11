@@ -32,6 +32,8 @@ The ZIP intentionally excludes:
 
 ## Recipient Install
 
+See the full installation guide in [`../INSTALL.md`](../INSTALL.md).
+
 Unzip to a controlled tools directory:
 
 ```powershell

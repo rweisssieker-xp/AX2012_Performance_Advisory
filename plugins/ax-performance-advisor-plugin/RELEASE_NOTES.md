@@ -7,6 +7,7 @@ Initial internal distribution package for AX Performance Advisor.
 ### Highlights
 
 - Read-only AX 2012 R3 and SQL Server 2016 evidence analysis.
+- Installation guide for ZIP distribution, Codex setup, smoke tests, update and uninstall.
 - Interactive dashboard with CEO Cockpit, Operator Cockpit, Batch Control Tower, Platform Extensions and AI/KI advisory sections.
 - AX-specific batch collision analysis, live blocking interpretation, frontend/user/client impact radar and X++ attribution readiness.
 - Governance artifacts for CAB/GxP, recommendation lifecycle, evidence gaps, ticket drafts and board-ready reports.

@@ -4,6 +4,7 @@ AX Performance Advisor is a Codex plugin concept for Dynamics AX 2012 R3 environ
 
 ## Documentation
 
+- `INSTALL.md`: installation, Codex setup, smoke test, update, uninstall, and troubleshooting.
 - `docs/INDEX.md`: complete documentation map.
 - `docs/architecture.md`: component and data-flow overview.
 - `docs/operations-guide.md`: read-only collection and reporting workflow.

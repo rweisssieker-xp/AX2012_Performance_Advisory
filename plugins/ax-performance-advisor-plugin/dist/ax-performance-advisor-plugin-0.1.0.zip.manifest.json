@@ -1,9 +1,9 @@
 {
   "package": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
   "version": "0.1.0",
-  "createdAt": "2026-05-11T11:09:26+00:00",
-  "sha256": "b4a2ecf2d02c7efc7961ec4be3899fe43ff77ee825070418014bd178a4a9a860",
-  "fileCount": 292,
+  "createdAt": "2026-05-11T12:24:55+00:00",
+  "sha256": "b8edae56a6b90f5cfc1a8c5ed108a3fa1daac78388e11fe74d4ef64c50d4c550",
+  "fileCount": 293,
   "excludedDirectories": [
     ".git",
     ".pytest_cache",
@@ -125,8 +125,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/distribution-guide.md",
-      "bytes": 2317,
-      "sha256": "1753402c7255e4f35d2d2258b26390b052dbd52b2f34b2b1454c4b003aa12484"
+      "bytes": 2387,
+      "sha256": "69a3f309f618686fe5945928f8a11532a529e656a3918b72f949dedace3517f9"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/enterprise-observability.md",
@@ -160,8 +160,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/INDEX.md",
-      "bytes": 2340,
-      "sha256": "62144a50894898539b7f8bd5d0db65d729079640b55d17333ace86f1fc7aca26"
+      "bytes": 2446,
+      "sha256": "a88134bd1b4f6d717e1b8f443b5cd90cfa0066c4ab1c9880d45d1e35c887ed95"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/learning-extensions.md",
@@ -269,6 +269,11 @@
       "sha256": "a386da626ec3d20a56e3d19c4e846367c871d33784ac86f10bd0a765411dedfc"
     },
     {
+      "path": "ax-performance-advisor-plugin/INSTALL.md",
+      "bytes": 5846,
+      "sha256": "90ed7e58431db337948c2b723c82a8f7e94ccf18c375e8e0f5ebf498fd060fe7"
+    },
+    {
       "path": "ax-performance-advisor-plugin/LICENSE",
       "bytes": 1080,
       "sha256": "2370fe112704c168085619d142c5ec1f1410d35903b8d7393a9479441ad8f22f"
@@ -285,13 +290,13 @@
     },
     {
       "path": "ax-performance-advisor-plugin/README.md",
-      "bytes": 22751,
-      "sha256": "b1e948fbbd42f21ecc8c1b5aa2650c0e4e378212173e6da5b5a44b42f5708d3a"
+      "bytes": 22846,
+      "sha256": "dff2868a771a4e4ae795e61b03b318e68ff84fee4f80f7be8900a69b803d116f"
     },
     {
       "path": "ax-performance-advisor-plugin/RELEASE_NOTES.md",
-      "bytes": 1136,
-      "sha256": "1d2bb40bd995e4486c208779822ad4fb2df0f893b8353c7a113dbaf9609d3ae5"
+      "bytes": 1227,
+      "sha256": "6632a12930c2dd9df725ceeca650bca1b918730c78dbb82ea7224fa6c7780893"
     },
     {
       "path": "ax-performance-advisor-plugin/requirements.txt",

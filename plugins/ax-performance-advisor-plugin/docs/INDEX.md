@@ -4,6 +4,7 @@ This index is the starting point for using, operating, extending, and releasing 
 
 ## Start Here
 
+- [Installation](../INSTALL.md): install from release ZIP, verify, configure Codex, update and uninstall.
 - [Architecture](architecture.md): components, data flow, trust boundaries, and output model.
 - [Operations Guide](operations-guide.md): how to collect evidence, generate dashboards, and run read-only analysis.
 - [Testing Guide](testing-guide.md): local validation, CI checks, dashboard smoke tests, and release verification.
