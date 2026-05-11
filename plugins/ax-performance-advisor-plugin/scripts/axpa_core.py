@@ -466,6 +466,7 @@ def analyze_evidence(root: str | Path) -> list[dict[str, Any]]:
     findings.extend(analyze_waits(evidence))
     findings.extend(analyze_blocking(evidence))
     findings.extend(analyze_ax_live_blocking(evidence))
+    findings.extend(analyze_frontend_machine_impact(evidence))
     findings.extend(analyze_missing_indexes(evidence))
     findings.extend(analyze_statistics(evidence))
     findings.extend(analyze_file_latency(evidence))
@@ -549,6 +550,139 @@ def analyze_top_queries(evidence: Evidence) -> list[dict[str, Any]]:
                     extra,
                 )
             )
+    return findings
+
+
+def _frontend_broad_inventory_signature(statement: str) -> dict[str, Any]:
+    text = str(statement or "")
+    upper = text.upper()
+    dimensions = [
+        "CONFIGID",
+        "INVENTSIZEID",
+        "INVENTCOLORID",
+        "INVENTSTYLEID",
+        "INVENTSITEID",
+        "INVENTLOCATIONID",
+        "INVENTBATCHID",
+        "WMSLOCATIONID",
+        "LICENSEPLATEID",
+        "INVENTSTATUSID",
+        "INVENTSERIALID",
+        "INVENTOWNERID",
+        "INVENTPROFILEID",
+        "INVENTGTDID",
+    ]
+    hit_dimensions = [dim for dim in dimensions if dim in upper]
+    broad_or_count = upper.count(" OR ")
+    joins_inventdim = "INVENTDIM" in upper
+    inventory_table = next((tbl for tbl in ["INVENTSUMUNIONDELTAPHYSICALQTY", "WHSINVENTRESERVE", "INVENTSUM", "INVENTTRANS"] if tbl in upper), "")
+    aggregate_stock = any(token in upper for token in ["SUM(", "MIN(T1.AVAIL", "AVAILPHYSICAL", "PHYSICALINVENT"])
+    return {
+        "isInventoryWideQuery": bool(inventory_table and joins_inventdim and (len(hit_dimensions) >= 4 or broad_or_count >= 4 or aggregate_stock)),
+        "inventoryTable": inventory_table,
+        "dimensionCount": len(hit_dimensions),
+        "dimensions": hit_dimensions,
+        "orPredicateCount": broad_or_count,
+        "aggregateStock": aggregate_stock,
+    }
+
+
+def analyze_frontend_machine_impact(evidence: Evidence) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    candidates: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+    for row in evidence.tables["sql_top_queries"]:
+        statement = str(row.get("statement_text") or "")
+        sig = _frontend_broad_inventory_signature(statement)
+        if not sig["isInventoryWideQuery"]:
+            continue
+        reads = float(row.get("total_logical_reads") or row.get("logical_reads") or 0)
+        avg_reads = float(row.get("avg_logical_reads") or 0)
+        duration = float(row.get("avg_duration_ms") or row.get("total_duration_ms") or 0)
+        executions = float(row.get("execution_count") or 1)
+        pressure = reads + (avg_reads * max(1, executions)) + (duration * 1000)
+        if pressure >= 10_000_000 or reads >= 5_000_000 or avg_reads >= 100_000 or duration >= 5_000:
+            candidates.append(("sql_top_queries", row, {**sig, "pressureScore": pressure, "reads": reads, "avgReads": avg_reads, "durationMs": duration}))
+    for row in evidence.tables["ax_live_blocking"]:
+        statement = str(row.get("statement_text") or row.get("Query") or "")
+        sig = _frontend_broad_inventory_signature(statement)
+        if not sig["isInventoryWideQuery"]:
+            continue
+        logical_reads = float(row.get("logical_reads") or row.get("reads") or 0)
+        elapsed = float(row.get("elapsed_time_ms") or 0)
+        cpu = float(row.get("cpu_time_ms") or 0)
+        pressure = logical_reads + elapsed * 1000 + cpu * 500
+        if pressure >= 1_000_000 or logical_reads >= 100_000 or elapsed >= 5_000:
+            candidates.append(("ax_live_blocking", row, {**sig, "pressureScore": pressure, "reads": logical_reads, "avgReads": 0, "durationMs": elapsed}))
+
+    for source, row, sig in sorted(candidates, key=lambda item: item[2]["pressureScore"], reverse=True)[:20]:
+        table = sig["inventoryTable"] or infer_object_from_sql(str(row.get("statement_text") or ""))
+        host = str(row.get("host_name") or row.get("HostName") or "")
+        user = str(row.get("user_id") or row.get("UserId") or "")
+        session_id = str(row.get("session_id") or row.get("SessionId") or "")
+        severity = "critical" if sig["pressureScore"] >= 100_000_000 or sig["reads"] >= 100_000_000 else "high"
+        summary = (
+            "Wide inventory availability query can slow the whole AX machine/AOS because it aggregates stock over "
+            "InventSum/InventDim dimensions with high logical reads. First contain the user action, then validate "
+            "form/filter usage, display methods, query ranges, statistics and index coverage."
+        )
+        extra = {
+            "axContext": {
+                "tables": [table, "INVENTDIM"],
+                "aos": [host] if host else [],
+                "companies": [],
+            },
+            "sqlContext": {
+                "queryHash": str(row.get("query_hash") or ""),
+                "planHash": str(row.get("plan_hash") or ""),
+                "objects": [table, "INVENTDIM"],
+            },
+            "frontendContext": {
+                "pattern": "wide-inventory-dimension-query",
+                "user": user,
+                "host": host,
+                "sessionId": session_id,
+                "clientType": str(row.get("ax_client_type") or ""),
+                "axStatus": str(row.get("ax_status") or ""),
+                "dimensionCount": sig["dimensionCount"],
+                "dimensions": sig["dimensions"],
+                "orPredicateCount": sig["orPredicateCount"],
+                "pressureScore": round(sig["pressureScore"], 2),
+                "likelyForms": ["InventOnHand", "InventAvailability", "WHS reservation/availability", "custom inventory inquiry"],
+                "containment": [
+                    "Identify user/session and ask whether an all-dimensions inventory inquiry is running.",
+                    "If business-approved, wait for completion; if accidental, cancel only via standard AX/SQL operational procedure.",
+                    "Repeat with restrictive Item/Site/Warehouse/Batch filters in TEST.",
+                ],
+            },
+            "changeReadiness": {
+                "benefit": "high",
+                "technicalRisk": "medium",
+                "axCompatibilityRisk": "high",
+                "testEffort": "medium",
+            },
+            "validation": {
+                "successMetric": "Reduce logical reads and elapsed time for inventory availability query by at least 50% without changing stock availability result.",
+                "rollback": "Revert form/query/index/statistics change and restore previous batch/user guidance.",
+            },
+        }
+        findings.append(
+            mk_finding(
+                evidence,
+                f"AX frontend machine-impact inventory query on {table}",
+                severity,
+                "high" if source == "ax_live_blocking" else "medium",
+                "frontend-machine-impact",
+                table,
+                summary,
+                source,
+                "machine_pressure_score",
+                round(sig["pressureScore"], 2),
+                1_000_000,
+                "A user or process appears to request broad inventory availability over many InventDim dimensions, creating high reads/CPU/elapsed time and possible AOS-wide slowdown.",
+                "ax-frontend-machine-impact",
+                extra,
+            )
+        )
     return findings
 
 

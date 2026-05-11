@@ -12,7 +12,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from axpa_core import analyze_evidence, batch_collision_summary, load_evidence, parse_ax_datetime, summarize_root_causes, write_json
+from axpa_core import analyze_evidence, batch_collision_summary, load_evidence, parse_ax_datetime, summarize_root_causes, write_json, _frontend_broad_inventory_signature
+from attribution_engine import generate_attribution_engine
+from batch_control_tower import generate_batch_control_tower
+from ceo_cockpit import generate_ceo_cockpit
+from collect_operational_status import collect as collect_operational_status
+from daily_production_loop import generate_daily_production_loop
+from flight_recorder import build_report as build_flight_recorder_report
+from operator_cockpit import generate_operator_cockpit
+from safety_guard import generate_safety_guard
+from user_client_impact_radar import generate_user_client_impact_radar
 
 
 SEV = {"critical": 5, "high": 4, "medium": 3, "low": 2, "informational": 1}
@@ -753,6 +762,118 @@ def sql_blocking_chain_recorder(evidence: str | Path) -> dict[str, Any]:
     return {"sampleCount": len(rows), "chainCount": len(chains), "chains": sorted(chains, key=lambda x: x["totalWaitMs"], reverse=True)[:50], "sessions": list(sessions.values())[:200]}
 
 
+def ax_frontend_machine_impact_advisor(evidence: str | Path, findings: list[dict[str, Any]]) -> dict[str, Any]:
+    root = Path(evidence)
+    sql_rows = _read_csv(root / "sql_top_queries.csv")
+    live_rows = _read_csv(root / "ax_live_blocking.csv")
+    user_rows = _read_csv(root / "user_sessions.csv")
+    session_hosts = Counter(str(r.get("client_computer") or r.get("host_name") or "unknown") for r in user_rows if r)
+    items = []
+    for source, rows in [("sql_top_queries", sql_rows), ("ax_live_blocking", live_rows)]:
+        for row in rows:
+            statement = str(row.get("statement_text") or row.get("Query") or "")
+            sig = _frontend_broad_inventory_signature(statement)
+            if not sig.get("isInventoryWideQuery"):
+                continue
+            logical_reads = _num(row.get("logical_reads") or row.get("total_logical_reads") or row.get("reads"))
+            avg_reads = _num(row.get("avg_logical_reads"))
+            elapsed = _num(row.get("elapsed_time_ms") or row.get("avg_duration_ms") or row.get("total_duration_ms"))
+            cpu = _num(row.get("cpu_time_ms") or row.get("total_cpu_ms"))
+            executions = _num(row.get("execution_count"), 1)
+            pressure = logical_reads + avg_reads * max(1, executions) + elapsed * 1000 + cpu * 500
+            if pressure < 1_000_000 and logical_reads < 100_000 and elapsed < 5_000:
+                continue
+            host = str(row.get("host_name") or row.get("HostName") or row.get("client_computer") or "")
+            user = str(row.get("user_id") or row.get("UserId") or "")
+            item = {
+                "source": source,
+                "risk": "critical" if pressure >= 100_000_000 or logical_reads >= 100_000_000 else "high",
+                "user": user or "unknown",
+                "host": host or "unknown",
+                "sessionId": str(row.get("session_id") or row.get("SessionId") or ""),
+                "queryHash": str(row.get("query_hash") or ""),
+                "inventoryTable": sig.get("inventoryTable"),
+                "logicalReads": int(logical_reads),
+                "avgReads": int(avg_reads),
+                "elapsedMs": int(elapsed),
+                "cpuMs": int(cpu),
+                "executionCount": int(executions),
+                "dimensionCount": sig.get("dimensionCount"),
+                "orPredicateCount": sig.get("orPredicateCount"),
+                "pressureScore": round(pressure, 2),
+                "likelyFrontend": "InventOnHand / inventory availability / WHS reservation / custom stock inquiry",
+                "whyMachineSlows": "Wide InventSum/InventDim aggregation can consume SQL reads/CPU and AOS worker time, so other AX users experience slow forms.",
+                "containment": "Locate user/session, confirm whether all-dimension stock inquiry is intentional, and stop or narrow only through approved operations procedure.",
+                "permanentFix": "Validate form filters, query ranges, display methods, caching, statistics and AX-compatible index coverage in TEST.",
+            }
+            items.append(item)
+    items = sorted(items, key=lambda x: x["pressureScore"], reverse=True)[:50]
+    by_host = Counter(i["host"] for i in items)
+    by_user = Counter(i["user"] for i in items)
+    by_table = Counter(i["inventoryTable"] for i in items)
+    frontend_findings = [f for f in findings if f.get("recommendation", {}).get("playbook") == "ax-frontend-machine-impact"]
+    return {
+        "itemCount": len(items),
+        "criticalCount": sum(1 for i in items if i["risk"] == "critical"),
+        "findingCount": len(frontend_findings),
+        "topItems": items,
+        "hosts": [{"host": k, "count": v, "activeSessions": session_hosts.get(k, 0)} for k, v in by_host.most_common(10)],
+        "users": [{"user": k, "count": v} for k, v in by_user.most_common(10)],
+        "tables": [{"table": k, "count": v} for k, v in by_table.most_common(10)],
+        "localizationModel": [
+            "User/Client action",
+            "AX form/query pattern",
+            "AOS worker/session",
+            "SQL InventSum/InventDim query",
+            "Machine-wide reads/CPU/waits",
+            "Other users perceive slow frontend",
+        ],
+        "operatorQuestions": [
+            "Which user/session is running the stock inquiry?",
+            "Was 'all dimensions/all stock' intentional or accidental?",
+            "Which form/menu item or customization triggered it?",
+            "Can the user reproduce it with restrictive item/site/warehouse filters?",
+            "Does the same query appear in Trace Parser as high call count or long SQL call?",
+        ],
+    }
+
+
+def lightweight_flight_recorder(evidence: str | Path, output_dir: str | Path | None = None) -> dict[str, Any]:
+    root = Path(evidence)
+    out = Path(output_dir) if output_dir else root
+    report_path = out / "lightweight-flight-recorder.json"
+    report = build_flight_recorder_report(root, report_path)
+    top = report.get("topRows", [])
+    return {
+        "mode": report.get("mode"),
+        "rowCount": report.get("rowCount", 0),
+        "wideInventoryCount": report.get("wideInventoryCount", 0),
+        "blockingRows": report.get("blockingRows", 0),
+        "families": report.get("families", []),
+        "hosts": report.get("hosts", []),
+        "users": report.get("users", []),
+        "waits": report.get("waits", []),
+        "timeline": report.get("timeline", []),
+        "topRows": top[:15],
+        "collectorPlan": report.get("collectorPlan", {}),
+        "aosPressure": report.get("aosPressure", {}),
+        "eventCorrelation": report.get("eventCorrelation", {}),
+        "queryStoreDelta": report.get("queryStoreDelta", {}),
+        "knownPatternLearning": report.get("knownPatternLearning", {}),
+        "complaintWizard": report.get("complaintWizard", {}),
+        "operatorActions": report.get("operatorActions", []),
+        "formInferenceEngine": report.get("formInferenceEngine", {}),
+        "spidAxSessionConfidence": report.get("spidAxSessionConfidence", {}),
+        "operatorFeedbackStore": report.get("operatorFeedbackStore", {}),
+        "reportPrintAnalyzer": report.get("reportPrintAnalyzer", {}),
+        "personalizationUsageDataRisk": report.get("personalizationUsageDataRisk", {}),
+        "securityRoleQueryInflation": report.get("securityRoleQueryInflation", {}),
+        "incidentOnePager": report.get("incidentOnePager", ""),
+        "output": str(report_path),
+        "interpretation": "Server-side read-only localization without client agent or Trace Parser. Form/X++ attribution remains inferred unless Trace Parser/DynamicsPerf evidence is added later.",
+    }
+
+
 def ax_business_process_sla(findings: list[dict[str, Any]]) -> dict[str, Any]:
     processes: dict[str, dict[str, Any]] = {}
     for f in findings:
@@ -946,6 +1067,7 @@ def gap_closure(evidence: str | Path, output_dir: str | Path, findings: list[dic
         "schedulerInstall": {
             "status": "install-script-needed" if not manifest_path.exists() else "manifest-present",
             "installCommand": f"powershell scripts/install_windows_task.ps1 -Environment <env> -Server <server> -Database <db> -Evidence {root} -Out {out}",
+            "readinessPackCommand": f"python scripts/build_production_readiness_pack.py --environment <env> --server <server> --database <db> --evidence {root} --out {out} --output {out / 'production-readiness-pack.json'}",
             "healthcheck": "Scheduled run must update pipeline manifest, remove stale lock, record exit code and retain latest successful run timestamp.",
             "retention": "Keep latest 30 outputs and evidence runs; archive or delete older local run folders after review.",
         },
@@ -977,6 +1099,7 @@ def gap_closure(evidence: str | Path, output_dir: str | Path, findings: list[dic
                 "Create release notes for collectors, dashboard, platform extensions and known limitations",
             ],
             "githubFiles": ["README.md", "LICENSE", ".gitignore", "docs/operations-guide.md", "docs/platform-extensions.md"],
+            "httpDashboardQaCommand": f"python scripts/qa_dashboard_http.py --root . --dashboard <dashboard.html> --output {out / 'dashboard-http-qa.json'}",
             "actionPack": str(out / "gap-closure-actions.md"),
         },
     }
@@ -1016,6 +1139,302 @@ def write_gap_closure_actions(out: Path, gaps: dict[str, Any]) -> None:
             lines.append(f"- **{key}:** {rendered}")
         lines.append("")
     (out / "gap-closure-actions.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def _finding_tables(finding: dict[str, Any]) -> list[str]:
+    tables = finding.get("axContext", {}).get("tables") or finding.get("tables") or []
+    if isinstance(tables, str):
+        tables = [tables]
+    if tables:
+        return [str(t) for t in tables if t]
+    text = " ".join(
+        str(part or "")
+        for part in [
+            finding.get("title"),
+            finding.get("likelyCause"),
+            finding.get("recommendation", {}).get("summary"),
+            " ".join(str(e.get("object") or e.get("table") or e.get("value") or "") for e in finding.get("evidence", [])),
+        ]
+    ).upper()
+    known = [
+        "INVENTTRANS",
+        "INVENTSUM",
+        "INVENTDIM",
+        "GENERALJOURNALACCOUNTENTRY",
+        "GENERALJOURNALENTRY",
+        "CUSTTRANS",
+        "VENDTRANS",
+        "SALESLINE",
+        "SALESHEADER",
+        "PURCHLINE",
+        "LEDGERJOURNALTRANS",
+        "BATCH",
+        "BATCHJOB",
+        "RETAILTRANSACTIONTABLE",
+    ]
+    return [name for name in known if name in text]
+
+
+def _business_process_for_text(text: str) -> str:
+    upper = text.upper()
+    rules = [
+        ("Inventory", ["INVENT", "MRP", "ITEM", "STOCK", "WAREHOUSE", "LAGER"]),
+        ("Finance", ["GENERALJOURNAL", "LEDGER", "CUSTTRANS", "VENDTRANS", "POSTING", "SETTLEMENT", "FIN"]),
+        ("Sales", ["SALES", "CUST", "CUSTOMER"]),
+        ("Purchasing", ["PURCH", "VEND", "VENDOR"]),
+        ("Production", ["PROD", "ROUTE", "BOM"]),
+        ("Retail", ["RETAIL", "POS", "STATEMENT"]),
+        ("Integration", ["AIF", "SERVICE", "EDI", "IMPORT", "EXPORT", "LOG"]),
+        ("Reporting", ["REPORT", "SSRS", "CUBE", "BI"]),
+    ]
+    for process, tokens in rules:
+        if any(token in upper for token in tokens):
+            return process
+    return "AX Core"
+
+
+def _query_intent(text: str) -> str:
+    upper = text.upper()
+    if "UPDATE " in upper or "INSERT " in upper or "DELETE " in upper:
+        if "GENERALJOURNAL" in upper or "LEDGER" in upper:
+            return "Finance posting"
+        if "INVENT" in upper:
+            return "Inventory update"
+        return "Transactional write"
+    if "SUM(" in upper or "GROUP BY" in upper:
+        return "Inquiry/report aggregation"
+    if "INVENTSUM" in upper or "AVAIL" in upper:
+        return "Inventory availability"
+    if "BATCH" in upper:
+        return "Batch control"
+    if "AIF" in upper or "SERVICE" in upper:
+        return "Integration/service"
+    if "SELECT" in upper:
+        return "Read/query"
+    return "Unknown"
+
+
+def _latest_trend_scorecards(trend_db: str | Path | None) -> list[dict[str, Any]]:
+    if not trend_db or not Path(trend_db).exists():
+        return []
+    try:
+        return trend_dashboard("", trend_db).get("scorecards", [])
+    except Exception:
+        return []
+
+
+def yolo_wave_usp_pack(evidence: str | Path, findings: list[dict[str, Any]], trend_db: str | Path | None = None) -> dict[str, Any]:
+    root = Path(evidence)
+    top = _top(findings, 40)
+    stats = _read_csv(root / "statistics_age.csv")
+    sql_top = _read_csv(root / "sql_top_queries.csv")
+    batch_tasks = _read_csv(root / "batch_tasks.csv")
+    sessions = _read_csv(root / "user_sessions.csv")
+    blocking = _read_csv(root / "ax_live_blocking.csv") + _read_csv(root / "blocking.csv")
+    source_status = _read_csv(root / "source_status.csv")
+    metadata = {}
+    if (root / "metadata.json").exists():
+        try:
+            metadata = json.loads((root / "metadata.json").read_text(encoding="utf-8-sig"))
+        except json.JSONDecodeError:
+            metadata = {}
+    batch_calendar = batch_reschedule_calendar(root)
+    strategic = strategic_usp_pack(root, findings, trend_db)
+    admin = admin_remediation_workbench(findings)
+    readiness_sources = {
+        "sqlTopQueries": root / "sql_top_queries.csv",
+        "waitStats": root / "sql_wait_stats_delta.csv",
+        "queryStore": root / "query_store_runtime.csv",
+        "plans": root / "plan_xml_inventory.csv",
+        "deadlocks": root / "deadlocks.csv",
+        "batch": root / "batch_tasks.csv",
+        "sessions": root / "user_sessions.csv",
+        "blocking": root / "ax_live_blocking.csv",
+        "statistics": root / "statistics_age.csv",
+        "xppTrace": root / "trace_parser.csv",
+    }
+
+    feasibility_items = []
+    for f in top[:25]:
+        risk = str(f.get("changeReadiness", {}).get("technicalRisk") or "medium").lower()
+        evidence_count = len(f.get("evidence", []))
+        score = 50 + min(25, evidence_count * 4) + (15 if f.get("confidence") == "high" else 0) - (20 if risk == "high" else 8 if risk == "medium" else 0)
+        feasibility_items.append({
+            "findingId": f.get("id"),
+            "title": f.get("title"),
+            "score": max(0, min(100, score)),
+            "risk": risk,
+            "approval": f.get("changeReadiness", {}).get("approvalPath", "review"),
+            "testability": f.get("validation", {}).get("successMetric", "before/after evidence"),
+            "rollback": f.get("validation", {}).get("rollback", "restore previous state"),
+        })
+
+    hourly = Counter()
+    month_end = 0
+    weekend = 0
+    for row in batch_tasks:
+        dt = parse_ax_datetime(row.get("start_time") or row.get("STARTDATETIME"))
+        if not dt:
+            continue
+        hourly[f"{dt.hour:02d}:00"] += 1
+        if dt.day >= 25:
+            month_end += 1
+        if dt.weekday() >= 5:
+            weekend += 1
+
+    criticality = defaultdict(lambda: {"findings": 0, "high": 0, "riskPoints": 0, "tables": Counter()})
+    for f in findings:
+        process = _business_process_for_text(" ".join([str(f.get("title", "")), " ".join(_finding_tables(f))]))
+        item = criticality[process]
+        item["findings"] += 1
+        item["riskPoints"] += SEV.get(f.get("severity"), 1)
+        if f.get("severity") in {"critical", "high"}:
+            item["high"] += 1
+        item["tables"].update(_finding_tables(f))
+
+    session_by_host = Counter(row.get("hostname") or row.get("host_name") or row.get("client_machine") or "unknown" for row in sessions)
+    blocked_by_user = Counter(row.get("user_id") or row.get("userid") or row.get("login_name") or "unknown" for row in blocking if str(row.get("blocking_session_id") or row.get("BlockingSessionId") or "").lower() not in {"", "0", "n/a", "none"})
+
+    custom_rows = _read_csv(root / "ax_model_mapping.csv") + _read_csv(root / "ax_sql_to_xpp_mapping.csv") + _read_csv(root / "trace_parser.csv")
+    custom_hotspots = Counter()
+    for row in custom_rows:
+        label = row.get("class") or row.get("class_name") or row.get("method") or row.get("object_name") or row.get("xpp_object")
+        if label:
+            custom_hotspots[str(label)] += 1
+    if not custom_hotspots:
+        for f in findings:
+            for table in _finding_tables(f):
+                if table.startswith(("ZZ", "BR", "CUST", "BRS", "BSS")) or table not in {"INVENTTRANS", "INVENTSUM", "GENERALJOURNALACCOUNTENTRY", "CUSTTRANS", "VENDTRANS", "BATCH", "BATCHJOB"}:
+                    custom_hotspots[table] += SEV.get(f.get("severity"), 1)
+
+    retention = []
+    for row in sorted(stats, key=lambda r: _num(r.get("rows")), reverse=True)[:20]:
+        table = row.get("object_name") or row.get("table_name") or row.get("name") or "unknown"
+        rows = int(_num(row.get("rows")))
+        mods = int(_num(row.get("modification_counter")))
+        retention.append({
+            "table": table,
+            "rows": rows,
+            "modifications": mods,
+            "keep36MonthsReductionPct": 15 if rows > 1_000_000 else 5,
+            "keep24MonthsReductionPct": 30 if rows > 1_000_000 else 10,
+            "keep12MonthsReductionPct": 45 if rows > 1_000_000 else 15,
+            "decision": "archive-simulation" if rows > 5_000_000 else "monitor",
+        })
+
+    intent_counter = Counter()
+    intent_examples = []
+    for row in sql_top[:50]:
+        text = row.get("query_text") or row.get("text") or row.get("statement_text") or ""
+        intent = _query_intent(text)
+        intent_counter[intent] += 1
+        if len(intent_examples) < 12:
+            intent_examples.append({"intent": intent, "cpuMs": row.get("total_cpu_ms") or row.get("cpu_time_ms"), "reads": row.get("total_logical_reads") or row.get("logical_reads"), "sample": str(text)[:180]})
+    for f in findings:
+        intent_counter[_query_intent(f.get("title", "") + " " + f.get("likelyCause", ""))] += 1
+
+    playbooks = []
+    for f in top[:15]:
+        playbooks.append({
+            "findingId": f.get("id"),
+            "title": f.get("title"),
+            "steps": [
+                "Confirm evidence window and affected AX process.",
+                "Reproduce or measure in TEST with same collector set.",
+                f.get("recommendation", {}).get("summary", "Apply recommended review action."),
+                f.get("validation", {}).get("successMetric", "Compare before/after metrics."),
+                f.get("validation", {}).get("rollback", "Rollback if metrics regress."),
+            ],
+        })
+
+    release_patterns = []
+    env_text = json.dumps(metadata, ensure_ascii=False).upper()
+    if "CU13" in env_text:
+        release_patterns.append({"signal": "AX 2012 R3 CU13", "action": "Match CU13-specific known issue library and validate custom model layer hotspots."})
+    if "SQL SERVER 2016" in env_text or metadata.get("sqlServer"):
+        release_patterns.append({"signal": "SQL/AX live environment", "action": "Track SQL 2016 lifecycle, Query Store availability and compatibility settings."})
+    release_patterns.extend(strategic.get("knownIssueMatcher", {}).get("matches", [])[:8])
+
+    high = sum(1 for f in findings if f.get("severity") in {"critical", "high"})
+    blocked_rows = len(blocking)
+    batch_collision_count = live_batch_collision_watch(root).get("collisionCount", 0)
+    risk_minutes = high * 45 + blocked_rows * 10 + batch_collision_count * 5
+    money = {
+        "estimatedRiskMinutes": risk_minutes,
+        "estimatedCostLowEur": risk_minutes * 2,
+        "estimatedCostHighEur": risk_minutes * 8,
+        "assumption": "Heuristic from high findings, live blocking rows and batch collisions; replace rates with internal process cost.",
+    }
+
+    scorecards = _latest_trend_scorecards(trend_db)
+    what_changed = []
+    if len(scorecards) >= 2:
+        before, after = scorecards[-2], scorecards[-1]
+        for key in ["healthScore", "highFindings", "batchCollisions", "peakConcurrency"]:
+            what_changed.append({"metric": key, "before": before.get(key), "after": after.get(key), "delta": _num(after.get(key)) - _num(before.get(key))})
+    else:
+        what_changed.append({"metric": "trend-baseline", "before": "missing", "after": len(scorecards), "delta": 0, "next": "Collect more scheduled runs."})
+
+    evidence_lawyer = []
+    for f in top[:25]:
+        direct = len([e for e in f.get("evidence", []) if e.get("source")])
+        status = "cab-ready" if f.get("confidence") == "high" and direct >= 2 else "needs-proof"
+        evidence_lawyer.append({"findingId": f.get("id"), "status": status, "directEvidenceCount": direct, "missingProof": "after TEST run" if status == "cab-ready" else "direct X++/blocking/query evidence in same time window"})
+
+    sequencer = []
+    for item in ai_safe_remediation_planner(findings).get("items", [])[:30]:
+        lane = item.get("recommendedLane")
+        sequencer.append({**item, "wave": "Wave 1 quick wins" if item.get("priorityScore", 0) >= 6 and item.get("risk") != "high" else "Wave 2 TEST validation" if item.get("risk") != "high" else "Wave 3 CAB/high-risk"})
+
+    false_positive_rules = []
+    low_conf = [f for f in findings if f.get("confidence") != "high"]
+    for playbook, count in Counter(f.get("recommendation", {}).get("playbook", "unknown") for f in low_conf).most_common(10):
+        false_positive_rules.append({"pattern": playbook, "candidateCount": count, "rule": "Require stronger direct evidence before ticketing if operator marks this pattern as false positive twice."})
+
+    debt = []
+    for f in findings:
+        if f.get("severity") in {"critical", "high", "medium"}:
+            debt.append({
+                "findingId": f.get("id"),
+                "title": f.get("title"),
+                "owner": f.get("axContext", {}).get("technicalOwner", "AX Operations"),
+                "businessProcess": _business_process_for_text(f.get("title", "") + " ".join(_finding_tables(f))),
+                "interestScore": SEV.get(f.get("severity"), 1) * (2 if f.get("confidence") == "high" else 1),
+                "status": "open",
+            })
+
+    contracts = []
+    for row in sorted(sql_top, key=lambda r: _num(r.get("avg_duration_ms") or r.get("total_elapsed_ms")), reverse=True)[:10]:
+        contracts.append({"type": "query", "target": row.get("query_hash") or row.get("query_id") or "query", "budget": "p95 duration/read must not regress > 20%", "currentDurationMs": row.get("avg_duration_ms") or row.get("total_elapsed_ms"), "currentReads": row.get("total_logical_reads") or row.get("logical_reads")})
+    for row in sorted(batch_tasks, key=lambda r: _num(r.get("duration_seconds")), reverse=True)[:10]:
+        contracts.append({"type": "batch", "target": row.get("caption") or row.get("task_id"), "budget": "duration must stay within current p95 + 20%", "currentDurationSeconds": row.get("duration_seconds")})
+
+    present = {name: path.exists() and path.stat().st_size > 3 for name, path in readiness_sources.items()}
+    readiness_score = round(sum(1 for ok in present.values() if ok) / max(1, len(present)) * 100)
+    survival_weeks = max(4, 104 - high * 2 - len([r for r in retention if r["decision"] == "archive-simulation"]) * 3 - batch_collision_count // 2)
+
+    return {
+        "axFixFeasibilityScore": {"itemCount": len(feasibility_items), "items": sorted(feasibility_items, key=lambda x: x["score"], reverse=True), "method": "Evidence count + confidence - technical risk."},
+        "businessCalendarAwareness": {"hourlyBatchLoad": [{"hour": k, "tasks": v} for k, v in sorted(hourly.items())], "monthEndTasks": month_end, "weekendTasks": weekend, "recommendation": "Overlay month-end, shipping cutoff, Finance close and MRP freeze windows in config for stricter scoring."},
+        "axTransactionCriticalityModel": {"processes": [{**v, "process": k, "tables": dict(v["tables"].most_common(5))} for k, v in sorted(criticality.items(), key=lambda x: x[1]["riskPoints"], reverse=True)]},
+        "userExperienceCorrelation": {"sessionHostCount": len(session_by_host), "topHosts": [{"host": k, "sessions": v} for k, v in session_by_host.most_common(10)], "blockedUsers": [{"user": k, "blockedRows": v} for k, v in blocked_by_user.most_common(10)], "blockingRows": blocked_rows},
+        "axCustomizationHotspotRanking": {"sourceRows": len(custom_rows), "items": [{"object": k, "score": v} for k, v in custom_hotspots.most_common(20)], "status": "trace-backed" if custom_rows else "finding-inferred"},
+        "dataRetentionPolicySimulator": {"candidateCount": len(retention), "candidates": retention},
+        "queryIntentClassifier": {"intentCounts": dict(intent_counter), "examples": intent_examples},
+        "operationalPlaybookGenerator": {"playbookCount": len(playbooks), "playbooks": playbooks},
+        "axReleaseHotfixIntelligence": {"metadata": metadata, "sourceStatus": source_status, "patterns": release_patterns, "status": "active" if release_patterns else "needs-build-metadata"},
+        "executiveRiskToMoneyView": money,
+        "aiWhatChangedAnalyst": {"runCount": len(scorecards), "changes": what_changed},
+        "aiBatchNegotiator": {"proposalCount": len(batch_calendar.get("proposals", [])), "negotiations": [{"proposal": p.get("proposal"), "conflict": p.get("riskNote"), "compromise": p.get("changeCandidate"), "validation": p.get("validation")} for p in batch_calendar.get("proposals", [])[:15]]},
+        "aiEvidenceLawyer": {"items": evidence_lawyer, "cabReady": sum(1 for x in evidence_lawyer if x["status"] == "cab-ready"), "needsProof": sum(1 for x in evidence_lawyer if x["status"] != "cab-ready")},
+        "aiRemediationSequencer": {"items": sequencer, "waves": dict(Counter(x["wave"] for x in sequencer))},
+        "aiFalsePositiveReducer": {"rules": false_positive_rules, "lowConfidenceCount": len(low_conf)},
+        "performanceDebtRegister": {"debtCount": len(debt), "totalInterestScore": sum(d["interestScore"] for d in debt), "items": sorted(debt, key=lambda x: x["interestScore"], reverse=True)[:100]},
+        "performanceContractTests": {"contractCount": len(contracts), "contracts": contracts},
+        "environmentReadinessScore": {"score": readiness_score, "sources": present, "axSourceStatus": source_status},
+        "safeAdminExecutionCockpit": {"mode": "preview-gated", "actions": admin.get("actions", []), "gates": ["state=approved", "admin confirmation token", "TEST first", "before/after evidence", "rollback script"]},
+        "axSurvivalHorizon": {"estimatedWeeks": survival_weeks, "riskBand": "red" if survival_weeks < 26 else "amber" if survival_weeks < 52 else "green", "drivers": {"highFindings": high, "batchCollisions": batch_collision_count, "archiveCandidates": len([r for r in retention if r["decision"] == "archive-simulation"]), "readinessScore": readiness_score}},
+    }
 
 
 def strategic_usp_pack(evidence: str | Path, findings: list[dict[str, Any]], trend_db: str | Path | None = None) -> dict[str, Any]:
@@ -1125,12 +1544,138 @@ def strategic_usp_pack(evidence: str | Path, findings: list[dict[str, Any]], tre
     }
 
 
+def max_usp_productization_pack(evidence: str | Path, findings: list[dict[str, Any]], trend_db: str | Path | None = None, manifest: str | Path | None = None, out: str | Path | None = None) -> dict[str, Any]:
+    root = Path(evidence)
+    output_root = Path(out) if out else root
+    metadata = load_evidence(root).metadata
+    env_slug = root.name
+    if "-test-" in env_slug:
+        env_slug = env_slug.split("-test-", 1)[0]
+    if env_slug.endswith("-current"):
+        env_slug = env_slug[: -len("-current")]
+    trend = trend_dashboard(root, trend_db)
+    batch_calendar = batch_reschedule_calendar(root)
+    dependency = batch_dependency_graph(root)
+    xpp = xpp_attribution(root, findings)
+    drift = environment_drift_guard(root)
+    evidence_gaps = evidence_gap_assistant(root, findings)
+    strategic = strategic_usp_pack(root, findings, trend_db)
+    yolo = yolo_wave_usp_pack(root, findings, trend_db)
+    ops = collect_operational_status(output_root.parent if output_root.parent.exists() else output_root, root.name)
+    top = _top(findings, 20)
+
+    env_vars = {
+        "teams": ["AXPA_TEAMS_WEBHOOK_URL"],
+        "ado": ["AXPA_ADO_ORG", "AXPA_ADO_PROJECT", "AXPA_ADO_TOKEN"],
+        "jira": ["AXPA_JIRA_BASE_URL", "AXPA_JIRA_PROJECT", "AXPA_JIRA_EMAIL", "AXPA_JIRA_TOKEN"],
+        "servicenow": ["AXPA_SN_INSTANCE_URL", "AXPA_SN_TOKEN"],
+        "powerbi": ["AXPA_POWERBI_ENDPOINT"],
+    }
+    connectors = []
+    for name, variables in env_vars.items():
+        present = [v for v in variables if os.getenv(v)]
+        connectors.append({
+            "target": name,
+            "status": "ready" if len(present) == len(variables) else "blocked",
+            "present": len(present),
+            "missing": [v for v in variables if v not in present],
+            "dryRunCommand": f"python scripts/push_integrations.py --evidence {root} --targets {name} --audit-db {output_root / (env_slug + '-push-audit.sqlite')} --dry-run",
+            "value": "Pushes deduped findings into the operator workflow instead of leaving them in reports.",
+        })
+
+    missing_sources = [gap for gap in evidence_gaps.get("gaps", []) if gap.get("status") != "ok"]
+    trace_sources = ["trace_parser.csv", "dynamicsperf.csv", "ax_model_mapping.csv", "ax_sql_trace.csv"]
+    trace_readiness = [{"source": src, "present": (root / src).exists() and (root / src).stat().st_size > 3, "collector": f"Provide {src} or run the matching collector/importer."} for src in trace_sources]
+
+    scheduler_commands = {
+        "install": f"powershell scripts/install_windows_task.ps1 -Environment {env_slug} -Server {metadata.get('server', env_slug)} -Database {metadata.get('database', '')} -Evidence {root} -Out {output_root.parent if output_root.parent.exists() else output_root}",
+        "dryRun": f"python scripts/run_axpa_pipeline.py --environment {env_slug} --server {metadata.get('server', env_slug)} --database {metadata.get('database', '')} --evidence {root} --out {output_root.parent if output_root.parent.exists() else output_root} --dry-run",
+        "healthcheck": f"python scripts/check_scheduler_health.py --manifest {manifest or (output_root / (env_slug + '-pipeline-manifest.json'))} --lock-file {(output_root.parent if output_root.parent.exists() else output_root) / (env_slug + '.lock')} --task-name AXPA-{env_slug}",
+    }
+
+    knowledge_patterns = []
+    for finding in top:
+        key = _hash_payload({"title": finding.get("title"), "playbook": finding.get("recommendation", {}).get("playbook"), "tables": _finding_tables(finding)})[:10]
+        knowledge_patterns.append({
+            "patternId": f"AXPA-KB-{key}",
+            "findingId": finding.get("id"),
+            "signature": f"{finding.get('recommendation', {}).get('playbook', 'unknown')} / {', '.join(_finding_tables(finding)[:3]) or 'no-table'}",
+            "reuse": "Use as internal Brasseler/AX2012-CU13 known-issue candidate after operator feedback.",
+        })
+
+    product_score_items = {
+        "dashboard": 20 if ops.get("components", {}).get("dashboardHttpQa", {}).get("status") == "green" else 10,
+        "automation": 15 if ops.get("components", {}).get("scheduler", {}).get("status") == "green" else 8,
+        "push": 15 if ops.get("components", {}).get("push", {}).get("status") == "green" else 4,
+        "xppAttribution": 15 if xpp.get("traceRows") or xpp.get("modelRows") else 6,
+        "batchIntelligence": 15 if batch_calendar.get("proposals") and dependency.get("chains") else 8,
+        "governance": 10 if ops.get("components", {}).get("adminGate", {}).get("status") in {"green", "amber"} else 4,
+        "history": 10 if trend.get("runCount", 0) >= 5 else 5,
+    }
+    product_score = sum(product_score_items.values())
+
+    usp_items = [
+        {"name": "Connector Launchpad", "score": 95, "status": "blocked-by-credentials" if any(c["status"] == "blocked" for c in connectors) else "ready", "evidence": f"{sum(1 for c in connectors if c['status'] == 'ready')}/{len(connectors)} connectors ready"},
+        {"name": "X++ Attribution Readiness", "score": 94, "status": "active" if any(x["present"] for x in trace_readiness) else "needs-trace-data", "evidence": f"{xpp.get('traceRows', 0)} trace rows, {xpp.get('modelRows', 0)} model rows"},
+        {"name": "Batch SLA Product Pack", "score": 93, "status": "active", "evidence": f"{strategic.get('batchSlaContractManager', {}).get('contractCount', 0)} contracts"},
+        {"name": "Scheduler Launch Pack", "score": 91, "status": ops.get("components", {}).get("scheduler", {}).get("status", "unknown"), "evidence": scheduler_commands["healthcheck"]},
+        {"name": "Knowledge Base Matcher", "score": 90, "status": "active", "evidence": f"{len(knowledge_patterns)} reusable patterns"},
+        {"name": "Productization Score", "score": 89, "status": "active", "evidence": f"{product_score}/100"},
+        {"name": "CAB Evidence Launchpad", "score": 88, "status": strategic.get("evidenceSla", {}).get("status", "unknown"), "evidence": f"Evidence SLA {strategic.get('evidenceSla', {}).get('score', 0)}"},
+        {"name": "Batch Twin Proposal Ranking", "score": 87, "status": "active", "evidence": f"{len(batch_calendar.get('proposals', []))} move proposals"},
+        {"name": "Operational Blocker Radar", "score": 86, "status": ops.get("status", "unknown"), "evidence": ", ".join(ops.get("blockers", [])) or "no blockers"},
+        {"name": "Test-vs-Prod Deep Drift", "score": 85, "status": "active", "evidence": f"{len(drift.get('comparisons', []))} comparisons"},
+        {"name": "Trace Evidence Acquisition Plan", "score": 84, "status": "active", "evidence": f"{len(missing_sources)} missing/partial sources"},
+        {"name": "AOS Affinity Offer", "score": 83, "status": "active", "evidence": f"{strategic.get('aosAffinityAdvisor', {}).get('nodeCount', 0)} AOS nodes"},
+        {"name": "Archiving ROI Sales Story", "score": 82, "status": "active", "evidence": f"{strategic.get('dataGrowthArchivingRoi', {}).get('candidateCount', 0)} candidates"},
+        {"name": "Regression Watch Offer", "score": 81, "status": "active" if trend.get("available") else "needs-history", "evidence": f"{trend.get('runCount', 0)} trend runs"},
+        {"name": "Admin Safe Execution Upsell", "score": 80, "status": ops.get("components", {}).get("adminGate", {}).get("status", "unknown"), "evidence": ops.get("components", {}).get("adminGate", {}).get("summary", "")},
+        {"name": "Executive Money Narrative", "score": 79, "status": "active", "evidence": f"risk high EUR {yolo.get('executiveRiskToMoneyView', {}).get('estimatedCostHighEur', 0)}"},
+        {"name": "AX Survival Horizon", "score": 78, "status": yolo.get("axSurvivalHorizon", {}).get("riskBand", "unknown"), "evidence": f"{yolo.get('axSurvivalHorizon', {}).get('estimatedWeeks', 0)} weeks"},
+        {"name": "Evidence Quality Coach", "score": 77, "status": "active", "evidence": f"{evidence_gaps.get('gapCount', 0)} gaps"},
+        {"name": "Process Owner Briefing Pack", "score": 76, "status": "active", "evidence": f"{len(strategic.get('knownIssueMatcher', {}).get('matches', []))} matched issues"},
+        {"name": "Migration Signal Board", "score": 75, "status": strategic.get("d365MigrationSignalDashboard", {}).get("decision", "unknown"), "evidence": strategic.get("d365MigrationSignalDashboard", {}).get("message", "")},
+    ]
+
+    launch_waves = {
+        "wave1_no_credentials": ["Dashboard QA", "Evidence Gap Plan", "Batch SLA Pack", "Knowledge Base candidates", "Productization Score"],
+        "wave2_with_service_accounts": ["Teams/ADO/Jira/ServiceNow/PowerBI push", "Scheduler installation", "recurring trend capture"],
+        "wave3_with_trace_data": ["X++ attribution", "Trace Parser call tree mapping", "DynamicsPerf cross-correlation"],
+        "wave4_governed_execution": ["Admin gate approvals", "TEST validation", "verified lifecycle closure"],
+    }
+
+    return {
+        "featureCount": len(usp_items),
+        "productizationScore": {"score": product_score, "grade": "A" if product_score >= 85 else "B" if product_score >= 70 else "C", "components": product_score_items},
+        "uspItems": usp_items,
+        "connectorLaunchpad": {"targets": connectors, "ready": sum(1 for c in connectors if c["status"] == "ready"), "blocked": sum(1 for c in connectors if c["status"] != "ready")},
+        "traceAttributionLaunchpad": {"sources": trace_readiness, "readySources": sum(1 for x in trace_readiness if x["present"]), "nextCommand": "Run Trace Parser/DynamicsPerf importers or AX model mapping collector for deep SQL -> X++ attribution."},
+        "schedulerLaunchPack": scheduler_commands,
+        "knowledgeBaseSeeds": knowledge_patterns,
+        "missingEvidencePlan": missing_sources,
+        "launchWaves": launch_waves,
+        "positioning": "AXPA differentiates from generic DB monitoring by turning SQL/AOS/Batch evidence into governed AX-specific decisions, not only alerts.",
+    }
+
+
 def generate_platform_extensions(evidence: str | Path, output_dir: str | Path | None = None, trend_db: str | Path | None = None, manifest: str | Path | None = None, state_file: str | Path | None = None) -> dict[str, Any]:
     findings = analyze_evidence(evidence)
     root = Path(evidence)
     out = Path(output_dir) if output_dir else root
     out.mkdir(parents=True, exist_ok=True)
+    run_root = out.parent if out.name == "platform-extensions" or out.name == "platform" else out
+    prefix = root.name
+    operational = collect_operational_status(run_root if run_root.exists() else out, prefix)
+    safety = generate_safety_guard(root, Path(__file__).resolve().parent, out)
+    cockpit = generate_operator_cockpit(findings, safety, {"score": 0, "status": "not-calculated"}, operational)
     payload = {
+        "operatorCockpit": cockpit,
+        "safetyGuard": safety,
+        "batchControlTower": generate_batch_control_tower(root),
+        "attributionEngine": generate_attribution_engine(root, findings),
+        "dailyProductionLoop": generate_daily_production_loop(run_root if run_root.exists() else out, prefix),
+        "userClientImpactRadar": generate_user_client_impact_radar(root, out / "user-client-impact-radar.json"),
+        "ceoCockpit": generate_ceo_cockpit(root, findings, out / "ceo-cockpit.json", trend_db),
         "trendDashboard": trend_dashboard(evidence, trend_db),
         "recommendationLifecycle": recommendation_lifecycle(findings, state_file or (out / "recommendation-lifecycle-state.json")),
         "incidentReplay": incident_replay_timeline(evidence, findings),
@@ -1146,6 +1691,8 @@ def generate_platform_extensions(evidence: str | Path, output_dir: str | Path | 
         "batchRescheduleCalendar": batch_reschedule_calendar(evidence),
         "batchDependencyGraph": batch_dependency_graph(evidence),
         "sqlBlockingChainRecorder": sql_blocking_chain_recorder(evidence),
+        "axFrontendMachineImpactAdvisor": ax_frontend_machine_impact_advisor(evidence, findings),
+        "lightweightFlightRecorder": lightweight_flight_recorder(evidence, out),
         "axBusinessProcessSla": ax_business_process_sla(findings),
         "evidenceGapAssistant": evidence_gap_assistant(evidence, findings),
         "deploymentRegressionGuard": deployment_regression_guard(evidence, trend_db),
@@ -1153,6 +1700,9 @@ def generate_platform_extensions(evidence: str | Path, output_dir: str | Path | 
         "alertingRules": alerting_rules(findings, evidence),
         "aiSafeFeatures": ai_safe_features_bundle(evidence, findings, trend_db),
         "strategicUspPack": strategic_usp_pack(evidence, findings, trend_db),
+        "yoloWaveUspPack": yolo_wave_usp_pack(evidence, findings, trend_db),
+        "maxUspProductizationPack": max_usp_productization_pack(evidence, findings, trend_db, manifest, out),
+        "operationalStatus": operational,
     }
     payload["gapClosure"] = gap_closure(evidence, out, findings, trend_db, manifest)
     write_gap_closure_actions(out, payload["gapClosure"])

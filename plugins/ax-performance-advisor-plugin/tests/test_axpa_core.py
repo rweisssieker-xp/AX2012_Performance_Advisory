@@ -31,6 +31,13 @@ from skill_catalog import generate_skill_catalog
 from compare_environments import compare_environments
 from ax_live_blocking_intelligence import generate_ax_live_blocking_intelligence
 from platform_extensions import generate_platform_extensions
+from qa_dashboard_http import run_http_check, find_free_port
+from check_scheduler_health import assess as assess_scheduler
+from validate_push_readiness import build as build_push_readiness
+from collect_operational_status import collect as collect_operational_status
+from flight_recorder import build_report as build_flight_recorder_report, write_feedback
+from user_client_impact_radar import generate_user_client_impact_radar
+from ceo_cockpit import generate_ceo_cockpit
 from mcp_server import handle
 
 
@@ -383,6 +390,13 @@ class AxpaCoreTests(unittest.TestCase):
         out = self.tmp / "platform"
         payload = generate_platform_extensions(self.evidence, out)
         for key in [
+            "operatorCockpit",
+            "safetyGuard",
+            "batchControlTower",
+            "attributionEngine",
+            "dailyProductionLoop",
+            "userClientImpactRadar",
+            "ceoCockpit",
             "trendDashboard",
             "recommendationLifecycle",
             "incidentReplay",
@@ -403,10 +417,19 @@ class AxpaCoreTests(unittest.TestCase):
             "adminRemediationWorkbench",
             "alertingRules",
             "aiSafeFeatures",
+            "yoloWaveUspPack",
         ]:
             self.assertIn(key, payload)
         self.assertTrue((out / "platform-extensions.json").exists())
         self.assertGreaterEqual(payload["recommendationLifecycle"]["items"].__len__(), 1)
+        self.assertIn("topSuspect", payload["operatorCockpit"])
+        self.assertEqual(payload["safetyGuard"]["collectorMode"], "read-only")
+        self.assertIn("moveCandidates", payload["batchControlTower"])
+        self.assertIn("items", payload["attributionEngine"])
+        self.assertTrue(payload["dailyProductionLoop"]["localAnalysisAllowed"])
+        self.assertEqual(payload["userClientImpactRadar"]["mode"], "internal-full-detail")
+        self.assertEqual(payload["ceoCockpit"]["featureCount"], 15)
+        self.assertEqual(payload["ceoCockpit"]["writePolicy"], "local-files-only-no-db-writes")
         self.assertIn("accepted", payload["recommendationLifecycle"]["transitions"]["proposed"])
         self.assertIn("mapperInputs", payload["xppAttribution"])
         self.assertIn("dimensions", payload["environmentDriftGuard"])
@@ -419,6 +442,144 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("actions", payload["adminRemediationWorkbench"])
         self.assertIn("rules", payload["alertingRules"])
         self.assertIn("batchTwin", payload["aiSafeFeatures"])
+        self.assertIn("axFixFeasibilityScore", payload["yoloWaveUspPack"])
+
+    def test_safety_guard_detects_read_only_and_risky_permissions(self) -> None:
+        from safety_guard import generate_safety_guard
+
+        evidence = self.tmp / "evidence-safety"
+        scripts_dir = self.tmp / "scripts-safety"
+        out = self.tmp / "out-safety"
+        evidence.mkdir()
+        scripts_dir.mkdir()
+        (scripts_dir / "collect_readonly.ps1").write_text(
+            "Invoke-AxpaSqlQuery -Query @\"\nSELECT TOP (10) * FROM sys.dm_exec_requests;\n\"@\n",
+            encoding="utf-8",
+        )
+        (evidence / "permissions.csv").write_text(
+            '"permission","value"\n"connect","1"\n"view_server_state","1"\n"can_create_table","1"\n"can_alter_any_schema","0"\n',
+            encoding="utf-8",
+        )
+
+        payload = generate_safety_guard(evidence, scripts_dir, out)
+
+        self.assertEqual(payload["verdict"], "amber")
+        self.assertEqual(payload["collectorMode"], "read-only")
+        self.assertIn("can_create_table", payload["riskyPermissions"])
+        self.assertTrue((out / "safety-guard.json").exists())
+
+    def test_safety_guard_blocks_write_verbs(self) -> None:
+        from safety_guard import generate_safety_guard
+
+        evidence = self.tmp / "evidence-safety-write"
+        scripts_dir = self.tmp / "scripts-safety-write"
+        out = self.tmp / "out-safety-write"
+        evidence.mkdir()
+        scripts_dir.mkdir()
+        (scripts_dir / "collect_bad.ps1").write_text(
+            "Invoke-AxpaSqlQuery -Query @\"\nUPDATE dbo.BATCH SET STATUS = 1;\n\"@\n",
+            encoding="utf-8",
+        )
+
+        payload = generate_safety_guard(evidence, scripts_dir, out)
+
+        self.assertEqual(payload["verdict"], "red")
+        self.assertEqual(payload["collectorMode"], "blocked")
+        self.assertEqual(payload["writeVerbHits"][0]["verb"], "UPDATE")
+
+    def test_operator_cockpit_prioritizes_top_suspect_and_safe_actions(self) -> None:
+        from operator_cockpit import generate_operator_cockpit
+
+        findings = [
+            {
+                "id": "AXPA-1",
+                "title": "AX frontend machine-impact inventory query on INVENTSUM",
+                "severity": "critical",
+                "confidence": "medium",
+                "classification": "frontend-machine-impact",
+                "axContext": {"module": "Inventory", "tables": ["INVENTSUM"], "aos": ["BRAS3333"]},
+                "recommendation": {"playbook": "ax-frontend-machine-impact", "summary": "Narrow the inventory inquiry."},
+                "evidence": [{"source": "sql_top_queries", "metric": "reads", "value": 1000}],
+                "frontendContext": {"user": "DOMAINT\\adminsysmgmt", "host": "BRAS3333", "sessionId": "625"},
+            }
+        ]
+        safety = {"verdict": "amber", "riskyPermissions": ["can_create_table"], "databaseWritesAllowed": False}
+        payload = generate_operator_cockpit(findings, safety, {"score": 70}, {"status": "red"})
+
+        self.assertEqual(payload["topSuspect"]["findingId"], "AXPA-1")
+        self.assertEqual(payload["topSuspect"]["module"], "Inventory")
+        self.assertIn("DOMAINT\\adminsysmgmt", payload["affectedContext"]["users"])
+        self.assertTrue(payload["safeNextActions"])
+        self.assertTrue(payload["doNotDo"])
+        self.assertEqual(payload["safetyVerdict"], "amber")
+
+    def test_batch_control_tower_builds_move_candidates(self) -> None:
+        from batch_control_tower import generate_batch_control_tower
+
+        evidence = self.tmp / "evidence-batch-tower"
+        evidence.mkdir()
+        (evidence / "batch_tasks.csv").write_text(
+            "task_id,job_id,class_number,caption,batch_group,company,status,start_time,end_time,duration_seconds\n"
+            "1,1,10,MRP A,MRP,GBL,4,2026-05-11 15:00:00,2026-05-11 16:00:00,3600\n"
+            "2,2,11,MRP B,MRP,GBL,4,2026-05-11 15:05:00,2026-05-11 16:05:00,3600\n"
+            "3,3,12,Report A,Reports,GBL,4,2026-05-11 16:00:00,2026-05-11 16:05:00,300\n",
+            encoding="utf-8",
+        )
+
+        payload = generate_batch_control_tower(evidence)
+
+        self.assertGreaterEqual(payload["taskCount"], 3)
+        self.assertTrue(payload["moveCandidates"])
+        self.assertIn("validation", payload["moveCandidates"][0])
+        self.assertIn("rollback", payload["moveCandidates"][0])
+
+    def test_attribution_engine_separates_observed_inferred_and_missing_proof(self) -> None:
+        from attribution_engine import generate_attribution_engine
+
+        findings = [
+            {
+                "id": "AXPA-INV",
+                "title": "AX frontend machine-impact inventory query on INVENTSUM",
+                "severity": "critical",
+                "sqlContext": {"queryHash": "0x1", "objects": ["INVENTSUM", "INVENTDIM"]},
+                "axContext": {"module": "Inventory", "tables": ["INVENTSUM", "INVENTDIM"]},
+            }
+        ]
+        evidence = self.tmp / "evidence-attribution"
+        evidence.mkdir()
+        payload = generate_attribution_engine(evidence, findings)
+
+        self.assertEqual(payload["items"][0]["findingId"], "AXPA-INV")
+        self.assertIn("INVENTSUM", payload["items"][0]["observed"]["tables"])
+        self.assertEqual(payload["items"][0]["inferred"]["form"], "InventOnHand")
+        self.assertIn("trace_parser.csv", payload["items"][0]["missingProof"])
+
+    def test_daily_production_loop_summarizes_operational_status_without_push(self) -> None:
+        from daily_production_loop import generate_daily_production_loop
+
+        out = self.tmp / "out-daily"
+        out.mkdir()
+        (out / "run-operational-status.json").write_text(
+            json.dumps(
+                {
+                    "status": "red",
+                    "blockers": ["push"],
+                    "components": {
+                        "scheduler": {"status": "amber", "summary": "manifest=ok task=missing"},
+                        "push": {"status": "red", "summary": "readyTargets=0/5"},
+                        "dashboardHttpQa": {"status": "green", "summary": "http=200 ok=True"},
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        payload = generate_daily_production_loop(out, "run")
+
+        self.assertEqual(payload["status"], "red")
+        self.assertIn("push", payload["blockers"])
+        self.assertTrue(payload["localAnalysisAllowed"])
+        self.assertTrue((out / "run-daily-production-loop.md").exists())
 
     def test_platform_gap_closure_covers_remaining_ten_features(self) -> None:
         out = self.tmp / "platform-gaps"
@@ -509,6 +670,48 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertIn("score", pack["operationalMaturityScore"])
         self.assertIn("decision", pack["d365MigrationSignalDashboard"])
 
+    def test_yolo_wave_usp_pack_contains_all_twenty_features(self) -> None:
+        payload = generate_platform_extensions(self.evidence, self.tmp / "yolo-wave-usps")
+        pack = payload["yoloWaveUspPack"]
+        required = {
+            "axFixFeasibilityScore",
+            "businessCalendarAwareness",
+            "axTransactionCriticalityModel",
+            "userExperienceCorrelation",
+            "axCustomizationHotspotRanking",
+            "dataRetentionPolicySimulator",
+            "queryIntentClassifier",
+            "operationalPlaybookGenerator",
+            "axReleaseHotfixIntelligence",
+            "executiveRiskToMoneyView",
+            "aiWhatChangedAnalyst",
+            "aiBatchNegotiator",
+            "aiEvidenceLawyer",
+            "aiRemediationSequencer",
+            "aiFalsePositiveReducer",
+            "performanceDebtRegister",
+            "performanceContractTests",
+            "environmentReadinessScore",
+            "safeAdminExecutionCockpit",
+            "axSurvivalHorizon",
+        }
+        self.assertEqual(set(pack), required)
+        self.assertIn("items", pack["axFixFeasibilityScore"])
+        self.assertIn("hourlyBatchLoad", pack["businessCalendarAwareness"])
+        self.assertIn("processes", pack["axTransactionCriticalityModel"])
+        self.assertIn("topHosts", pack["userExperienceCorrelation"])
+        self.assertIn("candidates", pack["dataRetentionPolicySimulator"])
+        self.assertIn("intentCounts", pack["queryIntentClassifier"])
+        self.assertIn("playbooks", pack["operationalPlaybookGenerator"])
+        self.assertIn("estimatedCostHighEur", pack["executiveRiskToMoneyView"])
+        self.assertIn("negotiations", pack["aiBatchNegotiator"])
+        self.assertIn("waves", pack["aiRemediationSequencer"])
+        self.assertIn("debtCount", pack["performanceDebtRegister"])
+        self.assertIn("contracts", pack["performanceContractTests"])
+        self.assertIn("score", pack["environmentReadinessScore"])
+        self.assertIn("gates", pack["safeAdminExecutionCockpit"])
+        self.assertIn("estimatedWeeks", pack["axSurvivalHorizon"])
+
     def test_recommendation_lifecycle_cli_persists_state(self) -> None:
         state_file = self.tmp / "lifecycle.json"
         result = subprocess.run(
@@ -556,6 +759,230 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertTrue(audit.exists())
         self.assertIn("duplicate-skipped", second.stdout)
+
+    def test_dashboard_http_qa_serves_dashboard_without_file_url(self) -> None:
+        dashboard = self.tmp / "out" / "unit-dashboard.html"
+        dashboard.parent.mkdir(parents=True)
+        dashboard.write_text("<html><body>AX Performance Advisor Dashboard Platform YOLO Wave USP Pack AX Survival Horizon</body></html>", encoding="utf-8")
+        result = run_http_check(self.tmp, dashboard, find_free_port(8900), ["YOLO Wave USP Pack", "AX Survival Horizon"])
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], 200)
+
+    def test_production_readiness_pack_cli_writes_commands(self) -> None:
+        output = self.tmp / "production-readiness.json"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "build_production_readiness_pack.py"),
+                "--environment",
+                "unit",
+                "--server",
+                "unit-sql",
+                "--database",
+                "unit-ax",
+                "--evidence",
+                str(self.evidence),
+                "--out",
+                str(self.tmp / "out"),
+                "--output",
+                str(output),
+            ],
+            cwd=str(PLUGIN_ROOT),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        self.assertIn("dashboardHttpQa", payload["steps"])
+        self.assertIn("scheduler", payload["steps"])
+        self.assertIn("traceAttribution", payload["steps"])
+        self.assertIn("productivePush", payload["steps"])
+        self.assertIn("adminExecutionGate", payload["steps"])
+        self.assertIn("healthcheck", payload["steps"]["scheduler"])
+        self.assertIn("preflight", payload["steps"]["productivePush"])
+        self.assertIn("preflight", payload["steps"]["adminExecutionGate"])
+
+    def test_scheduler_health_assesses_manifest_and_lock(self) -> None:
+        manifest = self.tmp / "manifest.json"
+        manifest.write_text(json.dumps({"status": "ok", "finishedAt": "2026-05-09T00:00:00Z", "steps": [{"name": "analyze", "status": "ok"}]}), encoding="utf-8")
+        payload = assess_scheduler(manifest, self.tmp / "unit.lock")
+        self.assertEqual(payload["status"], "green")
+        self.assertEqual(payload["manifestStatus"], "ok")
+
+    def test_push_readiness_reports_missing_env_and_audit(self) -> None:
+        payload = build_push_readiness(["teams", "ado"], self.tmp / "push.sqlite")
+        self.assertIn(payload["status"], {"red", "amber"})
+        self.assertEqual(payload["targetCount"], 2)
+        self.assertFalse(payload["audit"]["exists"])
+
+    def test_admin_gate_preflight_cli_writes_go_nogo(self) -> None:
+        output = self.tmp / "admin-preflight.json"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "admin_gate_preflight.py"),
+                "--evidence",
+                str(self.evidence),
+                "--output-dir",
+                str(self.tmp / "admin-exec"),
+                "--environment",
+                "TEST",
+                "--output",
+                str(output),
+            ],
+            cwd=str(PLUGIN_ROOT),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        self.assertIn("goNoGo", payload)
+        self.assertIn("blockedCount", payload)
+
+    def test_operational_status_collects_preflight_outputs(self) -> None:
+        (self.tmp / "unit-scheduler-health.json").write_text(json.dumps({"status": "green", "manifestStatus": "ok", "task": {"status": "present"}}), encoding="utf-8")
+        (self.tmp / "unit-push-readiness.json").write_text(json.dumps({"status": "amber", "readyTargets": 1, "targetCount": 2, "audit": {"records": 3}}), encoding="utf-8")
+        (self.tmp / "unit-admin-gate-preflight.json").write_text(json.dumps({"status": "amber", "goNoGo": "NO-GO", "executableCount": 0}), encoding="utf-8")
+        (self.tmp / "unit-dashboard-http-qa.json").write_text(json.dumps({"ok": True, "status": 200}), encoding="utf-8")
+        (self.tmp / "unit-production-readiness-pack.json").write_text(json.dumps({"steps": {"scheduler": {}, "productivePush": {}}}), encoding="utf-8")
+        payload = collect_operational_status(self.tmp, "unit")
+        self.assertEqual(payload["componentCount"], 5)
+        self.assertEqual(payload["components"]["scheduler"]["status"], "green")
+        self.assertEqual(payload["components"]["dashboardHttpQa"]["status"], "green")
+        self.assertIn(payload["status"], {"amber", "green"})
+
+    def test_platform_extensions_include_max_usp_productization_pack(self) -> None:
+        payload = generate_platform_extensions(self.evidence, self.tmp / "platform", self.tmp / "missing-trends.sqlite")
+        max_pack = payload["maxUspProductizationPack"]
+        self.assertEqual(max_pack["featureCount"], 20)
+        self.assertIn("productizationScore", max_pack)
+        self.assertIn("connectorLaunchpad", max_pack)
+        self.assertIn("traceAttributionLaunchpad", max_pack)
+        self.assertIn("schedulerLaunchPack", max_pack)
+        self.assertGreaterEqual(len(max_pack["knowledgeBaseSeeds"]), 1)
+
+    def test_frontend_machine_impact_detects_wide_inventory_query(self) -> None:
+        evidence = self.tmp / "frontend-evidence"
+        evidence.mkdir()
+        (evidence / "metadata.json").write_text(json.dumps({"environment": "unit", "timeWindow": {"start": "2026-05-10T08:00:00", "end": "2026-05-10T09:00:00"}}), encoding="utf-8")
+        (evidence / "sql_top_queries.csv").write_text(
+            "query_hash,plan_hash,database_name,object_name,statement_text,total_cpu_ms,total_duration_ms,total_logical_reads,execution_count,avg_duration_ms,avg_logical_reads,last_execution_time\n"
+            "0xINV,0xPLAN,AXDB,,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",500000,900000,250000000,3,300000,83333333,2026-05-10T08:30:00\n",
+            encoding="utf-8",
+        )
+        (evidence / "ax_live_blocking.csv").write_text(
+            "user_id,host_name,session_id,blocking_session_id,program_name,sql_status,database_name,command,wait_type,wait_time_ms,cpu_time_ms,elapsed_time_ms,reads,writes,logical_reads,statement_text,check_time,workload_family,ax_client_type,ax_status\n"
+            "user1,AOS1,123,0,Microsoft Dynamics AX,running,AXDB,SELECT,,0,120000,180000,0,0,150000000,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",2026-05-10T08:31:00,AX,Worker,running\n",
+            encoding="utf-8",
+        )
+        findings = analyze_evidence(evidence)
+        self.assertTrue(any(f["recommendation"]["playbook"] == "ax-frontend-machine-impact" for f in findings))
+        platform = generate_platform_extensions(evidence, self.tmp / "frontend-platform")
+        advisor = platform["axFrontendMachineImpactAdvisor"]
+        self.assertGreaterEqual(advisor["itemCount"], 1)
+        self.assertEqual(advisor["topItems"][0]["inventoryTable"], "INVENTSUM")
+
+    def test_lightweight_flight_recorder_classifies_without_trace_parser(self) -> None:
+        evidence = self.tmp / "flight-evidence"
+        evidence.mkdir()
+        (evidence / "ax_live_blocking.csv").write_text(
+            "user_id,host_name,session_id,blocking_session_id,program_name,sql_status,database_name,command,wait_type,wait_time_ms,cpu_time_ms,elapsed_time_ms,reads,writes,logical_reads,statement_text,check_time,workload_family,ax_client_type,ax_status\n"
+            "user1,AOS1,123,0,Microsoft Dynamics AX,running,AXDB,SELECT,,0,120000,180000,0,0,150000000,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",2026-05-10T08:31:00,AX,Worker,running\n",
+            encoding="utf-8",
+        )
+        output = self.tmp / "flight.json"
+        payload = build_flight_recorder_report(evidence, output, complaint_user="user1", complaint_host="AOS1", complaint_text="inventory")
+        self.assertTrue(output.exists())
+        self.assertEqual(payload["wideInventoryCount"], 1)
+        self.assertEqual(payload["topRows"][0]["family"], "wide-inventory-frontend")
+        self.assertEqual(payload["complaintWizard"]["decision"], "wide-inventory-likely")
+        self.assertIn("knownPatternLearning", payload)
+        self.assertIn("formInferenceEngine", payload)
+        self.assertEqual(payload["formInferenceEngine"]["top"][0]["best"]["form"], "InventOnHand")
+        platform = generate_platform_extensions(evidence, self.tmp / "flight-platform")
+        self.assertIn("lightweightFlightRecorder", platform)
+        self.assertEqual(platform["lightweightFlightRecorder"]["wideInventoryCount"], 1)
+
+    def test_user_client_impact_radar_lists_internal_user_and_client_impact(self) -> None:
+        evidence = self.tmp / "user-client-impact"
+        evidence.mkdir()
+        (evidence / "ax_live_blocking.csv").write_text(
+            "user_id,host_name,session_id,blocking_session_id,program_name,sql_status,database_name,command,wait_type,wait_time_ms,cpu_time_ms,elapsed_time_ms,reads,writes,logical_reads,statement_text,check_time,workload_family,ax_client_type,ax_status\n"
+            "userA,CLIENT1,10,0,Microsoft Dynamics AX,running,AXDB,SELECT,,0,1000,5000,0,0,2000000,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",2026-05-10T08:31:00,AX,Worker,running\n"
+            "userB,CLIENT2,11,10,Microsoft Dynamics AX,running,AXDB,SELECT,LCK_M_U,90000,200,95000,0,0,1000,\"SELECT * FROM CUSTTRANS WHERE ACCOUNTNUM=@P1\",2026-05-10T08:32:00,AX,Worker,blocked\n",
+            encoding="utf-8",
+        )
+        (evidence / "user_sessions.csv").write_text(
+            "user_id,client_type,status,login_time,aos,client_computer\n"
+            "userA,3,1,May 11 2026 08:00AM,1,CLIENT1\n"
+            "userB,3,1,May 11 2026 08:00AM,1,CLIENT2\n",
+            encoding="utf-8",
+        )
+
+        output = self.tmp / "user-client-impact.json"
+        payload = generate_user_client_impact_radar(evidence, output)
+
+        self.assertTrue(output.exists())
+        self.assertEqual(payload["mode"], "internal-full-detail")
+        self.assertEqual(payload["writePolicy"], "local-files-only-no-db-writes")
+        self.assertEqual(payload["topUsers"][0]["user"], "userA")
+        self.assertEqual(payload["topUsers"][0]["role"], "possible-blocker-machine-impact")
+        self.assertGreaterEqual(payload["topUsers"][0]["wideInventoryRows"], 1)
+        self.assertGreaterEqual(payload["topClients"][0]["impactScore"], 1)
+
+    def test_ceo_cockpit_generates_all_fifteen_board_features(self) -> None:
+        output = self.tmp / "ceo-cockpit.json"
+        payload = generate_ceo_cockpit(self.evidence, analyze_evidence(self.evidence), output)
+        required = {
+            "executiveOverview",
+            "businessImpactEur",
+            "decisionQueue",
+            "riskOfDoingNothing",
+            "operationalOwnership",
+            "businessProcessHeatmap",
+            "axLegacyRiskIndex",
+            "slaBreachForecast",
+            "changePortfolioView",
+            "boardReadyMonthlyReport",
+            "customerOrderImpactSignal",
+            "stabilityConfidenceScore",
+            "investmentJustification",
+            "crisisMode",
+            "ceoNarrativeAi",
+        }
+        self.assertEqual(payload["featureCount"], 15)
+        self.assertTrue(required.issubset(payload.keys()))
+        self.assertEqual(payload["writePolicy"], "local-files-only-no-db-writes")
+        self.assertGreaterEqual(len(payload["decisionQueue"]), 1)
+        self.assertTrue(output.exists())
+        self.assertTrue((self.tmp / "ceo-board-report.md").exists())
+
+    def test_flight_recorder_incident_markdown_and_feedback_store(self) -> None:
+        evidence = self.tmp / "incident-evidence"
+        evidence.mkdir()
+        (evidence / "ax_live_blocking.csv").write_text(
+            "user_id,host_name,session_id,blocking_session_id,program_name,sql_status,database_name,command,wait_type,wait_time_ms,cpu_time_ms,elapsed_time_ms,reads,writes,logical_reads,statement_text,check_time,workload_family,ax_client_type,ax_status\n"
+            "user1,AOS1,123,0,Microsoft Dynamics AX,running,AXDB,SELECT,,0,120000,180000,0,0,150000000,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",2026-05-10T08:31:00,AX,Worker,running\n",
+            encoding="utf-8",
+        )
+        feedback = self.tmp / "feedback.json"
+        write_feedback(feedback, {"signature": "dummy", "decision": "intentional", "label": "test", "actor": "unit"})
+        output = self.tmp / "incident.json"
+        markdown = self.tmp / "incident.md"
+        payload = build_flight_recorder_report(evidence, output, complaint_text="inventory", feedback_store=feedback, markdown_output=markdown)
+        self.assertTrue(markdown.exists())
+        self.assertIn("AX Frontend Incident One-Pager", markdown.read_text(encoding="utf-8"))
+        self.assertEqual(payload["operatorFeedbackStore"]["entryCount"], 1)
+        self.assertIn("spidAxSessionConfidence", payload)
+
+    def test_live_flight_recorder_uses_lightweight_sql_collector(self) -> None:
+        script = (SCRIPTS / "collect_lightweight_flight_recorder.ps1").read_text(encoding="utf-8")
+        self.assertIn("collect_sql_live_snapshot.ps1", script)
+        self.assertNotIn("collect_sql_snapshot.ps1", script)
+        live_sql = (SCRIPTS / "collect_sql_live_snapshot.ps1").read_text(encoding="utf-8")
+        self.assertIn("sys.dm_exec_requests", live_sql)
+        self.assertNotIn("sys.dm_db_index_physical_stats", live_sql)
+        self.assertNotIn("dm_db_stats_properties", live_sql)
 
 
 if __name__ == "__main__":
