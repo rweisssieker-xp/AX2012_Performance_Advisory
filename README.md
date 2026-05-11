@@ -24,7 +24,15 @@ Invoke-WebRequest `
 powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
 ```
 
-The installer downloads the release ZIP, verifies the SHA256 manifest, installs the plugin as a local Codex marketplace, updates `%USERPROFILE%\.codex\config.toml`, and runs a lightweight dashboard smoke test. Restart Codex after installation.
+The installer downloads the release ZIP, verifies the SHA256 manifest, installs the plugin as a local Codex marketplace, writes a `codex-config-snippet.toml`, and runs a lightweight dashboard smoke test. It does not modify `%USERPROFILE%\.codex\config.toml` unless you explicitly add `-UpdateCodexConfig`.
+
+Optional Codex config update with backup and TOML validation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force -UpdateCodexConfig
+```
+
+Restart Codex after installation.
 
 Run against anonymized sample evidence:
 

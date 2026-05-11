@@ -43,6 +43,8 @@ Invoke-WebRequest `
 powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
 ```
 
+The default installer does not modify `%USERPROFILE%\.codex\config.toml`; it writes `codex-config-snippet.toml` for review. Use `-UpdateCodexConfig` only when the admin wants the installer to update Codex config with backup and TOML validation.
+
 Minimum recipient install:
 
 ```powershell

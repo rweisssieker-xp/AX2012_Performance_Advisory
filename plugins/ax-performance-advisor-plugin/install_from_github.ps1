@@ -4,6 +4,7 @@ param(
   [string]$CodexHome = "$env:USERPROFILE\.codex",
   [string]$MarketplaceName = "ax-performance-advisory",
   [string]$PluginName = "ax-performance-advisor-plugin",
+  [switch]$UpdateCodexConfig,
   [switch]$NoConfigUpdate,
   [switch]$Force,
   [switch]$SkipPythonCheck,
@@ -22,6 +23,53 @@ function Test-Command {
   return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
+function Write-Utf8NoBomLines {
+  param(
+    [Parameter(Mandatory=$true)][string]$Path,
+    [Parameter(Mandatory=$true)][AllowEmptyString()][string[]]$Lines
+  )
+
+  $encoding = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllLines($Path, $Lines, $encoding)
+}
+
+function New-CodexConfigBlock {
+  param(
+    [Parameter(Mandatory=$true)][string]$MarketplaceName,
+    [Parameter(Mandatory=$true)][string]$MarketplacePath,
+    [Parameter(Mandatory=$true)][string]$PluginName
+  )
+
+  $pluginSection = "[plugins.`"$PluginName@$MarketplaceName`"]"
+  $marketplaceSection = "[marketplaces.$MarketplaceName]"
+  $tomlMarketplacePath = $MarketplacePath.Replace("'", "''")
+  $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+  return @(
+    "# BEGIN AXPA installer managed block: $PluginName@$MarketplaceName",
+    $marketplaceSection,
+    "last_updated = `"$timestamp`"",
+    'source_type = "local"',
+    "source = '$tomlMarketplacePath'",
+    "",
+    $pluginSection,
+    "enabled = true",
+    "# END AXPA installer managed block: $PluginName@$MarketplaceName"
+  )
+}
+
+function Test-TomlSyntax {
+  param([Parameter(Mandatory=$true)][string]$Path)
+
+  if (-not (Test-Command "python")) {
+    throw "Python is required to validate config.toml before modifying it. Re-run without -UpdateCodexConfig and apply the generated snippet manually."
+  }
+
+  & python -c "import sys,tomllib; tomllib.loads(open(sys.argv[1], 'r', encoding='utf-8-sig').read())" $Path
+  if ($LASTEXITCODE -ne 0) {
+    throw "TOML validation failed for $Path"
+  }
+}
+
 function Update-CodexConfig {
   param(
     [Parameter(Mandatory=$true)][string]$ConfigPath,
@@ -30,19 +78,9 @@ function Update-CodexConfig {
     [Parameter(Mandatory=$true)][string]$PluginName
   )
 
-  $pluginSection = "[plugins.`"$PluginName@$MarketplaceName`"]"
-  $marketplaceSection = "[marketplaces.$MarketplaceName]"
-  $escapedMarketplacePath = $MarketplacePath.Replace("\", "\\").Replace("'", "''")
-  $newBlock = @(
-    "",
-    $marketplaceSection,
-    'last_updated = "' + (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") + '"',
-    'source_type = "local"',
-    "source = '\\?\$escapedMarketplacePath'",
-    "",
-    $pluginSection,
-    "enabled = true"
-  )
+  $markerStart = "# BEGIN AXPA installer managed block: $PluginName@$MarketplaceName"
+  $markerEnd = "# END AXPA installer managed block: $PluginName@$MarketplaceName"
+  $newBlock = New-CodexConfigBlock -MarketplaceName $MarketplaceName -MarketplacePath $MarketplacePath -PluginName $PluginName
 
   $lines = @()
   if (Test-Path $ConfigPath) {
@@ -52,12 +90,13 @@ function Update-CodexConfig {
   $filtered = New-Object System.Collections.Generic.List[string]
   $skip = $false
   foreach ($line in $lines) {
-    if ($line -eq $marketplaceSection -or $line -eq $pluginSection) {
+    if ($line -eq $markerStart) {
       $skip = $true
       continue
     }
-    if ($skip -and $line -match '^\[') {
+    if ($skip -and $line -eq $markerEnd) {
       $skip = $false
+      continue
     }
     if (-not $skip) {
       $filtered.Add($line)
@@ -67,9 +106,19 @@ function Update-CodexConfig {
   $parent = Split-Path -Parent $ConfigPath
   New-Item -ItemType Directory -Force -Path $parent | Out-Null
   if (Test-Path $ConfigPath) {
-    Copy-Item -LiteralPath $ConfigPath -Destination "$ConfigPath.bak-$(Get-Date -Format yyyyMMddHHmmss)" -Force
+    Test-TomlSyntax -Path $ConfigPath
   }
-  ($filtered + $newBlock) | Set-Content -LiteralPath $ConfigPath -Encoding UTF8
+
+  $candidatePath = "$ConfigPath.axpa-new"
+  $backupPath = "$ConfigPath.bak-$(Get-Date -Format yyyyMMddHHmmss)"
+  Write-Utf8NoBomLines -Path $candidatePath -Lines ([string[]]($filtered + "" + $newBlock + ""))
+  Test-TomlSyntax -Path $candidatePath
+
+  if (Test-Path $ConfigPath) {
+    Copy-Item -LiteralPath $ConfigPath -Destination $backupPath -Force
+    Write-Host "Backed up Codex config to $backupPath"
+  }
+  Move-Item -LiteralPath $candidatePath -Destination $ConfigPath -Force
 }
 
 function Copy-DirectoryRobust {
@@ -162,12 +211,17 @@ try {
   }
   $marketplace | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $marketplaceRoot "marketplace.json") -Encoding UTF8
 
-  if (-not $NoConfigUpdate) {
+  $configSnippetPath = Join-Path $marketplaceRoot "codex-config-snippet.toml"
+  Write-Utf8NoBomLines -Path $configSnippetPath -Lines ([string[]](New-CodexConfigBlock -MarketplaceName $MarketplaceName -MarketplacePath $marketplaceRoot -PluginName $PluginName))
+
+  if ($UpdateCodexConfig -and -not $NoConfigUpdate) {
     Write-Step "Enable marketplace and plugin in Codex config"
     Update-CodexConfig -ConfigPath $configPath -MarketplaceName $MarketplaceName -MarketplacePath $marketplaceRoot -PluginName $PluginName
   }
   else {
-    Write-Host "Skipped Codex config update because -NoConfigUpdate was set."
+    Write-Host "Skipped automatic Codex config update."
+    Write-Host "Config snippet written to $configSnippetPath"
+    Write-Host "Review and append this snippet manually, or re-run with -UpdateCodexConfig after backing up config.toml."
   }
 
   if (-not $SkipPythonCheck -and (Test-Command "python")) {

@@ -12,6 +12,8 @@ Initial internal distribution package for AX Performance Advisor.
 - AX-specific batch collision analysis, live blocking interpretation, frontend/user/client impact radar and X++ attribution readiness.
 - Governance artifacts for CAB/GxP, recommendation lifecycle, evidence gaps, ticket drafts and board-ready reports.
 - Local-only packaging scripts with SBOM, integrity manifest and checksummed ZIP.
+- GitHub installer `install_from_github.ps1` installs the release ZIP from GitHub and verifies the manifest checksum.
+- Installer safety update: `config.toml` is not modified by default; the installer writes `codex-config-snippet.toml`. Automatic config updates require `-UpdateCodexConfig`, create a backup, use a managed marker block, and validate TOML before replacing the file.
 
 ### Safety
 

@@ -56,7 +56,7 @@ if ($actual -ne $manifest.sha256) { throw "ZIP checksum mismatch" }
 
 ### Option A: Direct Codex Install From GitHub
 
-This downloads the GitHub release ZIP, verifies the SHA256 checksum from the release manifest, installs it as a local Codex marketplace, and enables the plugin in `%USERPROFILE%\.codex\config.toml`.
+This downloads the GitHub release ZIP, verifies the SHA256 checksum from the release manifest, installs it as a local Codex marketplace, writes a `codex-config-snippet.toml`, and runs a smoke test. By default, it does not modify `%USERPROFILE%\.codex\config.toml`.
 
 Download only the installer from the release:
 
@@ -80,8 +80,11 @@ Useful options:
 # Replace an existing install
 powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force
 
-# Install without editing Codex config.toml
-powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -NoConfigUpdate
+# Optional: update Codex config.toml after backup and TOML validation
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force -UpdateCodexConfig
+
+# Explicitly prevent config.toml changes even when wrappers pass -UpdateCodexConfig
+powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -Force -NoConfigUpdate
 
 # Install into another Codex home for testing
 powershell -ExecutionPolicy Bypass -File .\install_from_github.ps1 -CodexHome C:\Temp\codex-home -Force
@@ -93,7 +96,13 @@ Default target:
 %USERPROFILE%\.codex\plugins\marketplaces\ax-performance-advisory\plugins\ax-performance-advisor-plugin
 ```
 
-Restart Codex after installation so the local marketplace and plugin are reloaded.
+To enable the plugin manually, review and append the generated snippet:
+
+```text
+%USERPROFILE%\.codex\plugins\marketplaces\ax-performance-advisory\codex-config-snippet.toml
+```
+
+Restart Codex after installation or after manually updating `config.toml`.
 
 ### Option B: Manual ZIP Install
 
