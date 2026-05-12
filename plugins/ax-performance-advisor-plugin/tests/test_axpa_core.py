@@ -823,6 +823,42 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["status"], 200)
 
+    def test_generated_dashboard_inline_script_is_valid_javascript(self) -> None:
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("node is required for dashboard JavaScript syntax validation")
+        dashboard = self.tmp / "dashboard.html"
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "generate_dashboard.py"),
+                "--evidence",
+                str(self.evidence),
+                "--output",
+                str(dashboard),
+            ],
+            cwd=str(PLUGIN_ROOT),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        checker = self.tmp / "check-dashboard-js.cjs"
+        checker.write_text(
+            """
+const fs = require('fs');
+const vm = require('vm');
+const html = fs.readFileSync(process.argv[2], 'utf8');
+const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].map(m => m[1]);
+if (!scripts.length) throw new Error('No inline script found');
+for (const [i, script] of scripts.entries()) {
+  new vm.Script(script, { filename: `dashboard-inline-${i}.js` });
+}
+""",
+            encoding="utf-8",
+        )
+        syntax = subprocess.run([node, str(checker), str(dashboard)], text=True, capture_output=True)
+        self.assertEqual(syntax.returncode, 0, syntax.stderr)
+
     def test_production_readiness_pack_cli_writes_commands(self) -> None:
         output = self.tmp / "production-readiness.json"
         result = subprocess.run(

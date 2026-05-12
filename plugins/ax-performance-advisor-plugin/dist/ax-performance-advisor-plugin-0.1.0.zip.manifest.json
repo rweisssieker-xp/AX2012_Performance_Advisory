@@ -1,8 +1,8 @@
 {
   "package": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
   "version": "0.1.0",
-  "createdAt": "2026-05-12T03:52:30+00:00",
-  "sha256": "83e274c6085400e63513a8e419236c3de3e40679f29c12ebd2d39be2aaff96ef",
+  "createdAt": "2026-05-12T07:12:26+00:00",
+  "sha256": "155319cb26d25f95f26d792e828c8420d602af08bec440c0459040b882fd7c0b",
   "fileCount": 299,
   "excludedDirectories": [
     ".git",
@@ -740,8 +740,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/generate_dashboard.py",
-      "bytes": 157216,
-      "sha256": "eb169eff2fba1f061ca4ef78e16237c30872e7c6af6111b77d1d2014b7c50fa5"
+      "bytes": 157218,
+      "sha256": "aff2e87ef14ac721b8ab150813145220e8fbe2fd0d638c831b2eb7f498883d65"
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/generate_executive_narrative.py",
@@ -1505,8 +1505,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/tests/test_axpa_core.py",
-      "bytes": 59620,
-      "sha256": "b000e34d72ae6e53cdc6ab7ff8816cd0100418e3ff34ddbbded995cfc9bc95d9"
+      "bytes": 61016,
+      "sha256": "f5e2d5ba1f21c6ecaf8289519c8b7d78e3600c750539403f559d9c7e4af1baf1"
     }
   ]
 }

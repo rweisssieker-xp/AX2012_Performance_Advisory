@@ -49,8 +49,8 @@
     },
     {
       "path": ".pytest_cache\\v\\cache\\nodeids",
-      "sha256": "e13527d40f32f58e47b67e01fd31780d0cf7f5f440bf0b423df37a343dd04710",
-      "bytes": 7182
+      "sha256": "26dd2af458c05024a30ea88669baf17a17b9b4b02b9998fcb1a91bd5955f3187",
+      "bytes": 7287
     },
     {
       "path": ".pytest_cache\\v\\cache\\stepwise",
@@ -99,7 +99,7 @@
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.integrity.json",
-      "sha256": "46433ec934ccc5242e117b1035b7bb166847d8752c4ef78bc391e411b4f778f4",
+      "sha256": "40ec7c29be6a9492d8901157df5a1ceff717e3babbe9a347e3b971da359f7637",
       "bytes": 53688
     },
     {
@@ -109,8 +109,8 @@
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
-      "sha256": "83e274c6085400e63513a8e419236c3de3e40679f29c12ebd2d39be2aaff96ef",
-      "bytes": 433250
+      "sha256": "45d3e83935b3ea90ba8538b65a10f328d9a0d09020ddd404069f852c2c45c61b",
+      "bytes": 8160
     },
     {
       "path": "dist\\ax-performance-advisor-plugin-0.1.0.zip.manifest.json",
@@ -779,8 +779,8 @@
     },
     {
       "path": "scripts\\generate_dashboard.py",
-      "sha256": "eb169eff2fba1f061ca4ef78e16237c30872e7c6af6111b77d1d2014b7c50fa5",
-      "bytes": 157216
+      "sha256": "aff2e87ef14ac721b8ab150813145220e8fbe2fd0d638c831b2eb7f498883d65",
+      "bytes": 157218
     },
     {
       "path": "scripts\\generate_executive_narrative.py",
@@ -1544,9 +1544,9 @@
     },
     {
       "path": "tests\\test_axpa_core.py",
-      "sha256": "b000e34d72ae6e53cdc6ab7ff8816cd0100418e3ff34ddbbded995cfc9bc95d9",
-      "bytes": 59620
+      "sha256": "f5e2d5ba1f21c6ecaf8289519c8b7d78e3600c750539403f559d9c7e4af1baf1",
+      "bytes": 61016
     }
   ],
-  "manifestSha256": "c7970eacb29a920848d754caa34050838fe61df0a7e067816b1858d5faf3e4d8"
+  "manifestSha256": "804aff21ef06a5ef4da5c48676e51d8efed6af2726bf85729914b9bd25d9d553"
 }
