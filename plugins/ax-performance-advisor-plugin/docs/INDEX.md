@@ -28,6 +28,7 @@ This index is the starting point for using, operating, extending, and releasing 
 - [Learning Extensions](learning-extensions.md)
 - [Market Differentiators](market-differentiators.md)
 - [Platform Extensions](platform-extensions.md)
+- [Frontend/User USP Pack](frontend-user-usps.md)
 - [Future AI USPs](future-ai-usps.md)
 - [AX Batch Collision Analysis](batch-collision-analysis.md)
 - [Pipeline Orchestrator](pipeline-orchestrator.md)

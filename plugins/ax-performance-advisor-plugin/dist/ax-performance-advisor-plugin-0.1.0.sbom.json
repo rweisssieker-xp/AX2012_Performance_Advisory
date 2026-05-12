@@ -1,6 +1,6 @@
 {
   "format": "AXPA-SBOM-0.1",
-  "componentCount": 306,
+  "componentCount": 309,
   "components": [
     {
       "path": ".app.json",
@@ -58,8 +58,8 @@
     },
     {
       "path": ".pytest_cache/v/cache/nodeids",
-      "sha256": "98f10369795efed1bf15148c8ca900df4fb56972e730811f4f2d13a15ae62c4e",
-      "bytes": 6966,
+      "sha256": "e13527d40f32f58e47b67e01fd31780d0cf7f5f440bf0b423df37a343dd04710",
+      "bytes": 7182,
       "type": "none"
     },
     {
@@ -118,26 +118,26 @@
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.integrity.json",
-      "sha256": "ab5e1143119622273cfa7641ad2cd361c948f810501b3d11529c74ea47a4cdae",
-      "bytes": 53163,
+      "sha256": "46433ec934ccc5242e117b1035b7bb166847d8752c4ef78bc391e411b4f778f4",
+      "bytes": 53688,
       "type": ".json"
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.sbom.json",
-      "sha256": "63cf57f62f0b37d03a45285270c6415c7832aa895c680d1802fc8d33c050b7ca",
-      "bytes": 59516,
+      "sha256": "db3dad4e37600430b14e99b0252565d12dde604cd44269ea1919f93de76212c0",
+      "bytes": 60103,
       "type": ".json"
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.zip",
-      "sha256": "63d2e4ef96980303e49fa0e1b48ef4599e48d0a2fefa97545d35997985d8e4e5",
-      "bytes": 421271,
+      "sha256": "83e274c6085400e63513a8e419236c3de3e40679f29c12ebd2d39be2aaff96ef",
+      "bytes": 433250,
       "type": ".zip"
     },
     {
       "path": "dist/ax-performance-advisor-plugin-0.1.0.zip.manifest.json",
-      "sha256": "9e69a107aa093cdddf51b4400daaaadda4a1183e0c6170ffcf84307dbabae5e8",
-      "bytes": 60132,
+      "sha256": "501687664a959b0b7924ca5b7a42f00c4eed7f4162e1e9e86f93f203722a07b5",
+      "bytes": 60743,
       "type": ".json"
     },
     {
@@ -225,6 +225,12 @@
       "type": ".md"
     },
     {
+      "path": "docs/frontend-user-usps.md",
+      "sha256": "5cdc759cce9c84f7031a4e1a6716df9c69957c7083cb877920f488a7a5e46288",
+      "bytes": 3765,
+      "type": ".md"
+    },
+    {
       "path": "docs/future-ai-usps.md",
       "sha256": "d227081f5cfc2b9d430da69f5867c21060c4bd93eaa5b43b5afe82ba75c3624b",
       "bytes": 2529,
@@ -244,8 +250,8 @@
     },
     {
       "path": "docs/INDEX.md",
-      "sha256": "c65e409322f1f0cf31349d1037998324cc40e83753516649fb06e0040b5041f8",
-      "bytes": 2565,
+      "sha256": "1020188701b5bf7a2959682b136fde27e96a0fdfcfe325cd218760b457a41eca",
+      "bytes": 2615,
       "type": ".md"
     },
     {
@@ -406,8 +412,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "ae6a7ff15f7b080b7b6da528407d45be662d0b7a81f7e85ac3f80f4f72950411",
-      "bytes": 23914,
+      "sha256": "bd0dfa906a63db27ebcadbdf2951d87f5e24fcc13d62d24b0cf0ca03075df14c",
+      "bytes": 24916,
       "type": ".md"
     },
     {
@@ -909,6 +915,12 @@
       "type": ".py"
     },
     {
+      "path": "scripts/frontend_user_usps.py",
+      "sha256": "10a58c23463c3525f4aa83ddc4e2e063552f1dfe5df0ffe7526d162ff0d7a89a",
+      "bytes": 17471,
+      "type": ".py"
+    },
+    {
       "path": "scripts/generate_action_playbook.py",
       "sha256": "76ad1604e711d539ef7abb73bcf9461fa6a3d4415741d74a447e50649d720ab3",
       "bytes": 2002,
@@ -922,8 +934,8 @@
     },
     {
       "path": "scripts/generate_dashboard.py",
-      "sha256": "c6623b30357d83507afe876c89d8a26fb49e5938bce3aeb5e90ad7d51f06891a",
-      "bytes": 151134,
+      "sha256": "eb169eff2fba1f061ca4ef78e16237c30872e7c6af6111b77d1d2014b7c50fa5",
+      "bytes": 157216,
       "type": ".py"
     },
     {
@@ -1138,8 +1150,8 @@
     },
     {
       "path": "scripts/platform_extensions.py",
-      "sha256": "af6b19ef0aff0f9f08976ca8724fc24806a5903fe662ee27c604c2c1deb5610f",
-      "bytes": 113146,
+      "sha256": "fb80a3d6436c836e169ea052b82509f88413ecf3515e29c33054ae5046395d38",
+      "bytes": 113308,
       "type": ".py"
     },
     {
@@ -1228,8 +1240,8 @@
     },
     {
       "path": "scripts/run_axpa_pipeline.py",
-      "sha256": "9fff0474bddcbc3e91a5730f641d2d3c6182428bb498b20bdfbb9931eb7e6d89",
-      "bytes": 8457,
+      "sha256": "44b535a7babcb795eba003e960c94a358f0a8b5093dd7dcab86d479ec5f5f810",
+      "bytes": 8497,
       "type": ".py"
     },
     {
@@ -1605,6 +1617,12 @@
       "type": ".md"
     },
     {
+      "path": "skills/frontend-user-impact-analysis/SKILL.md",
+      "sha256": "4b6be2532c0da938fe638c790d000b89418221a3d262f96eb242c73194f8b58f",
+      "bytes": 1793,
+      "type": ".md"
+    },
+    {
       "path": "skills/governance-extension-analysis/SKILL.md",
       "sha256": "0f587215328f4d0a5b9108f4928341ac52306b6ab582d554970b1a77c483236a",
       "bytes": 351,
@@ -1834,8 +1852,8 @@
     },
     {
       "path": "tests/test_axpa_core.py",
-      "sha256": "08a6b4b773cad1746abdc490fddaa3fc9b62c81a3de8d47b73b3456f46292d4b",
-      "bytes": 53742,
+      "sha256": "b000e34d72ae6e53cdc6ab7ff8816cd0100418e3ff34ddbbded995cfc9bc95d9",
+      "bytes": 59620,
       "type": ".py"
     }
   ]

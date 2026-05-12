@@ -102,12 +102,12 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    evidence = Path(args.evidence)
-    output = Path(args.out)
+    evidence = Path(args.evidence).resolve()
+    output = Path(args.out).resolve()
     evidence.mkdir(parents=True, exist_ok=True)
     output.mkdir(parents=True, exist_ok=True)
-    trend_db = Path(args.trend_db) if args.trend_db else output / f"{args.environment}-trends.sqlite"
-    lock_file = Path(args.lock_file) if args.lock_file else output / f"{args.environment}.lock"
+    trend_db = Path(args.trend_db).resolve() if args.trend_db else output / f"{args.environment}-trends.sqlite"
+    lock_file = Path(args.lock_file).resolve() if args.lock_file else output / f"{args.environment}.lock"
     connection = args.connection_string or f"Server={args.server};Database={args.database};Integrated Security=True;Application Name=AXPA-Pipeline;TrustServerCertificate=True"
     env = os.environ.copy()
     env["AXPA_ENVIRONMENT_NAME"] = args.environment

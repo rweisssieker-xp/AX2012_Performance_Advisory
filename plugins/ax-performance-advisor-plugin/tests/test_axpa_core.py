@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -37,6 +38,7 @@ from validate_push_readiness import build as build_push_readiness
 from collect_operational_status import collect as collect_operational_status
 from flight_recorder import build_report as build_flight_recorder_report, write_feedback
 from user_client_impact_radar import generate_user_client_impact_radar
+from frontend_user_usps import generate_frontend_user_usps
 from ceo_cockpit import generate_ceo_cockpit
 from mcp_server import handle
 
@@ -403,7 +405,41 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertEqual(manifest["status"], "ok")
         self.assertTrue((out / "unit-dashboard.html").exists())
         self.assertTrue(any(step["name"] == "trend-store" and step["status"] == "ok" for step in manifest["steps"]))
+        dashboard_step = next(step for step in manifest["steps"] if step["name"] == "dashboard")
+        self.assertIn(str(evidence.resolve()), dashboard_step["command"])
+        self.assertIn(str((out / "unit-dashboard.html").resolve()), dashboard_step["command"])
         self.assertFalse((out / "unit.lock").exists())
+
+    def test_pipeline_orchestrator_normalizes_relative_evidence_paths(self) -> None:
+        evidence = self.tmp / "relative-evidence"
+        shutil.copytree(self.evidence, evidence)
+        out = self.tmp / "relative-out"
+        repo_root = PLUGIN_ROOT.parents[1]
+        relative_evidence = Path(os.path.relpath(evidence, repo_root))
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(SCRIPTS / "run_axpa_pipeline.py"),
+                "--environment",
+                "relative-unit",
+                "--server",
+                "unit-sql",
+                "--database",
+                "unit-ax",
+                "--evidence",
+                str(relative_evidence),
+                "--out",
+                str(out),
+            ],
+            cwd=str(repo_root),
+            text=True,
+            capture_output=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest = json.loads((out / "relative-unit-pipeline-manifest.json").read_text(encoding="utf-8"))
+        analyze_step = next(step for step in manifest["steps"] if step["name"] == "analyze")
+        self.assertIn(str((repo_root / relative_evidence).resolve()), analyze_step["command"])
+        self.assertTrue((out / "relative-unit-dashboard.html").exists())
 
     def test_platform_extensions_cover_product_gaps(self) -> None:
         out = self.tmp / "platform"
@@ -948,6 +984,68 @@ class AxpaCoreTests(unittest.TestCase):
         self.assertEqual(payload["topUsers"][0]["role"], "possible-blocker-machine-impact")
         self.assertGreaterEqual(payload["topUsers"][0]["wideInventoryRows"], 1)
         self.assertGreaterEqual(payload["topClients"][0]["impactScore"], 1)
+
+    def test_frontend_user_usps_generate_all_twenty_concrete_features(self) -> None:
+        evidence = self.tmp / "frontend-user-usps"
+        evidence.mkdir()
+        (evidence / "metadata.json").write_text(json.dumps({"environment": "unit", "sqlServer": "AXSQL", "axDatabase": "AXDB"}), encoding="utf-8")
+        (evidence / "ax_live_blocking.csv").write_text(
+            "user_id,host_name,session_id,blocking_session_id,program_name,sql_status,database_name,command,wait_type,wait_time_ms,cpu_time_ms,elapsed_time_ms,reads,writes,logical_reads,statement_text,check_time,workload_family,ax_client_type,ax_status\n"
+            "userA,CLIENT1,10,0,Microsoft Dynamics AX,running,AXDB,SELECT,,0,120000,180000,0,0,180000000,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",2026-05-10T08:31:00,AX,Worker,running\n"
+            "userB,CLIENT2,11,10,Microsoft Dynamics AX,running,AXDB,SELECT,LCK_M_U,90000,200,95000,0,0,1000,\"SELECT * FROM CUSTTRANS WHERE ACCOUNTNUM=@P1\",2026-05-10T08:32:00,AX,Worker,blocked\n",
+            encoding="utf-8",
+        )
+        (evidence / "user_sessions.csv").write_text(
+            "user_id,client_type,status,login_time,aos,client_computer\n"
+            "userA,3,1,May 11 2026 08:00AM,AOS1,CLIENT1\n"
+            "userB,3,1,May 11 2026 08:00AM,AOS1,CLIENT2\n",
+            encoding="utf-8",
+        )
+        (evidence / "sql_top_queries.csv").write_text(
+            "query_hash,plan_hash,database_name,object_name,statement_text,total_cpu_ms,total_duration_ms,total_logical_reads,execution_count,avg_duration_ms,avg_logical_reads,last_execution_time\n"
+            "0xINV,0xPLAN,AXDB,,\"SELECT SUM(T1.AVAILPHYSICAL) FROM INVENTSUM T1 CROSS JOIN INVENTDIM T2 WHERE T1.INVENTDIMID=T2.INVENTDIMID AND T2.CONFIGID=@P1 AND T2.INVENTSITEID=@P2 AND T2.INVENTLOCATIONID=@P3 AND T2.WMSLOCATIONID=@P4 AND T2.INVENTSTATUSID=@P5\",500000,900000,250000000,3,300000,83333333,2026-05-10T08:30:00\n",
+            encoding="utf-8",
+        )
+        (evidence / "batch_tasks.csv").write_text(
+            "task_id,job_id,class_number,caption,batch_group,company,status,start_time,end_time,duration_seconds\n"
+            "1,10,100,Inventory close,INVENT,GBL,4,2026-05-10T02:00:00,2026-05-10T02:45:00,2700\n",
+            encoding="utf-8",
+        )
+
+        output = self.tmp / "frontend-user-usps.json"
+        payload = generate_frontend_user_usps(evidence, output)
+
+        required = {
+            "axUserFrictionIndex",
+            "frontendBlastRadiusRadar",
+            "axFormToSqlAttribution",
+            "misusePatternDetection",
+            "clientHostReputationScore",
+            "businessProcessHeatmap",
+            "axPerformanceGuardrails",
+            "smartUserCoachingPack",
+            "aosDrainRecommendation",
+            "criticalTableStressIndex",
+            "readAmplificationDetector",
+            "filterQualityAdvisor",
+            "doNotRunTogetherMatrix",
+            "incidentFingerprintLibrary",
+            "aiEvidenceFirstTroubleshooter",
+            "axSlowMorningDetector",
+            "sqlToAxTableSemanticExplainer",
+            "changeFreezeRiskAdvisor",
+            "executiveBusinessLossEstimator",
+            "axModernizationPressureIndex",
+        }
+        self.assertEqual(payload["featureCount"], 20)
+        self.assertEqual(set(payload["features"].keys()), required)
+        self.assertEqual(payload["writePolicy"], "local-files-only-no-db-writes")
+        self.assertTrue(output.exists())
+        self.assertGreaterEqual(payload["features"]["axUserFrictionIndex"]["topUsers"][0]["score"], 1)
+        self.assertGreaterEqual(payload["features"]["frontendBlastRadiusRadar"]["blastRadiusItems"][0]["affectedUsers"], 1)
+        self.assertEqual(payload["features"]["misusePatternDetection"]["patterns"][0]["pattern"], "broad-inventory-query")
+        self.assertIn("InventOnHand", payload["features"]["axFormToSqlAttribution"]["items"][0]["likelyForms"])
+        self.assertGreaterEqual(payload["features"]["executiveBusinessLossEstimator"]["estimatedCostHighEur"], 1)
 
     def test_ceo_cockpit_generates_all_fifteen_board_features(self) -> None:
         output = self.tmp / "ceo-cockpit.json"

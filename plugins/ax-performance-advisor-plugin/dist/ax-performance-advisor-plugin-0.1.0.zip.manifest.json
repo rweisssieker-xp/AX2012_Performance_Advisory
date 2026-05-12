@@ -1,9 +1,9 @@
 {
   "package": "dist\\ax-performance-advisor-plugin-0.1.0.zip",
   "version": "0.1.0",
-  "createdAt": "2026-05-11T17:48:06+00:00",
-  "sha256": "1c89ddf60b2879e4967df2b57a2dff4751d6003fff8144fc6126d1224092b07c",
-  "fileCount": 296,
+  "createdAt": "2026-05-12T03:52:30+00:00",
+  "sha256": "83e274c6085400e63513a8e419236c3de3e40679f29c12ebd2d39be2aaff96ef",
+  "fileCount": 299,
   "excludedDirectories": [
     ".git",
     ".pytest_cache",
@@ -149,6 +149,11 @@
       "sha256": "900476b4d07e9e05f0795b57ee541c9e76dfa303525dd0ce446eeaef59392940"
     },
     {
+      "path": "ax-performance-advisor-plugin/docs/frontend-user-usps.md",
+      "bytes": 3765,
+      "sha256": "5cdc759cce9c84f7031a4e1a6716df9c69957c7083cb877920f488a7a5e46288"
+    },
+    {
       "path": "ax-performance-advisor-plugin/docs/future-ai-usps.md",
       "bytes": 2529,
       "sha256": "d227081f5cfc2b9d430da69f5867c21060c4bd93eaa5b43b5afe82ba75c3624b"
@@ -165,8 +170,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/docs/INDEX.md",
-      "bytes": 2565,
-      "sha256": "c65e409322f1f0cf31349d1037998324cc40e83753516649fb06e0040b5041f8"
+      "bytes": 2615,
+      "sha256": "1020188701b5bf7a2959682b136fde27e96a0fdfcfe325cd218760b457a41eca"
     },
     {
       "path": "ax-performance-advisor-plugin/docs/learning-extensions.md",
@@ -300,8 +305,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/README.md",
-      "bytes": 23914,
-      "sha256": "ae6a7ff15f7b080b7b6da528407d45be662d0b7a81f7e85ac3f80f4f72950411"
+      "bytes": 24916,
+      "sha256": "bd0dfa906a63db27ebcadbdf2951d87f5e24fcc13d62d24b0cf0ca03075df14c"
     },
     {
       "path": "ax-performance-advisor-plugin/RELEASE_NOTES.md",
@@ -719,6 +724,11 @@
       "sha256": "d47e20bb62a3004bc9ab45d9562089e3896e586258b4642e01504a67468a2e1c"
     },
     {
+      "path": "ax-performance-advisor-plugin/scripts/frontend_user_usps.py",
+      "bytes": 17471,
+      "sha256": "10a58c23463c3525f4aa83ddc4e2e063552f1dfe5df0ffe7526d162ff0d7a89a"
+    },
+    {
       "path": "ax-performance-advisor-plugin/scripts/generate_action_playbook.py",
       "bytes": 2002,
       "sha256": "76ad1604e711d539ef7abb73bcf9461fa6a3d4415741d74a447e50649d720ab3"
@@ -730,8 +740,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/generate_dashboard.py",
-      "bytes": 151134,
-      "sha256": "c6623b30357d83507afe876c89d8a26fb49e5938bce3aeb5e90ad7d51f06891a"
+      "bytes": 157216,
+      "sha256": "eb169eff2fba1f061ca4ef78e16237c30872e7c6af6111b77d1d2014b7c50fa5"
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/generate_executive_narrative.py",
@@ -910,8 +920,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/platform_extensions.py",
-      "bytes": 113146,
-      "sha256": "af6b19ef0aff0f9f08976ca8724fc24806a5903fe662ee27c604c2c1deb5610f"
+      "bytes": 113308,
+      "sha256": "fb80a3d6436c836e169ea052b82509f88413ecf3515e29c33054ae5046395d38"
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/plugin_integrity.py",
@@ -985,8 +995,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/run_axpa_pipeline.py",
-      "bytes": 8457,
-      "sha256": "9fff0474bddcbc3e91a5730f641d2d3c6182428bb498b20bdfbb9931eb7e6d89"
+      "bytes": 8497,
+      "sha256": "44b535a7babcb795eba003e960c94a358f0a8b5093dd7dcab86d479ec5f5f810"
     },
     {
       "path": "ax-performance-advisor-plugin/scripts/safety_guard.py",
@@ -1299,6 +1309,11 @@
       "sha256": "d39ecb7619c0f8312e0934e2b3ce00eef2913627608b6415136390d52ab470df"
     },
     {
+      "path": "ax-performance-advisor-plugin/skills/frontend-user-impact-analysis/SKILL.md",
+      "bytes": 1793,
+      "sha256": "4b6be2532c0da938fe638c790d000b89418221a3d262f96eb242c73194f8b58f"
+    },
+    {
       "path": "ax-performance-advisor-plugin/skills/governance-extension-analysis/SKILL.md",
       "bytes": 351,
       "sha256": "0f587215328f4d0a5b9108f4928341ac52306b6ab582d554970b1a77c483236a"
@@ -1490,8 +1505,8 @@
     },
     {
       "path": "ax-performance-advisor-plugin/tests/test_axpa_core.py",
-      "bytes": 53742,
-      "sha256": "08a6b4b773cad1746abdc490fddaa3fc9b62c81a3de8d47b73b3456f46292d4b"
+      "bytes": 59620,
+      "sha256": "b000e34d72ae6e53cdc6ab7ff8816cd0100418e3ff34ddbbded995cfc9bc95d9"
     }
   ]
 }

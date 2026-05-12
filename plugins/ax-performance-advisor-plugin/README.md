@@ -511,6 +511,20 @@ Details are documented in `docs/ai-ki-features.md`.
 
 The interactive HTML dashboard embeds this AI/KI pack in dedicated tabs for advisory chat, safe actions, GxP validation, evidence gaps, ticket drafts, and collector status.
 
+## Frontend/User USP Pack
+
+The plugin now includes `scripts/frontend_user_usps.py` for slow AX frontend analysis without client-side parsers. It correlates local `ax_live_blocking.csv`, `user_sessions.csv`, `sql_top_queries.csv`, and batch evidence into 20 concrete analyses: user friction, client reputation, broad inventory blast radius, likely AX forms, misuse patterns, guardrails, coaching text, AOS drain hints, table stress, read amplification, filter quality, do-not-run-together rules, incident fingerprints, evidence-first troubleshooting, slow-morning detection, semantic table explanations, freeze risk, business loss estimation, and modernization pressure.
+
+Run it directly with:
+
+```powershell
+python .\scripts\frontend_user_usps.py `
+  --evidence .\evidence\BRAS3333 `
+  --output .\out\BRAS3333\frontend-user-usp-pack.json
+```
+
+The normal platform pipeline runs it automatically and shows the result in the dashboard under `Platform` -> `Frontend/User USP Pack - 20 konkrete Analysen`.
+
 Release and local test instructions are documented in `docs/release-runbook.md`. Additional future differentiation ideas are tracked in `docs/future-ai-usps.md`.
 
 Admin Execution Mode is documented in `docs/admin-execution-mode.md`. It generates guarded preview scripts, confirmation tokens, and audit records for approved admins without executing production changes from the dashboard.

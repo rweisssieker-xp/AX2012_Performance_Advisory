@@ -19,6 +19,7 @@ from ceo_cockpit import generate_ceo_cockpit
 from collect_operational_status import collect as collect_operational_status
 from daily_production_loop import generate_daily_production_loop
 from flight_recorder import build_report as build_flight_recorder_report
+from frontend_user_usps import generate_frontend_user_usps
 from operator_cockpit import generate_operator_cockpit
 from safety_guard import generate_safety_guard
 from user_client_impact_radar import generate_user_client_impact_radar
@@ -1675,6 +1676,7 @@ def generate_platform_extensions(evidence: str | Path, output_dir: str | Path | 
         "attributionEngine": generate_attribution_engine(root, findings),
         "dailyProductionLoop": generate_daily_production_loop(run_root if run_root.exists() else out, prefix),
         "userClientImpactRadar": generate_user_client_impact_radar(root, out / "user-client-impact-radar.json"),
+        "frontendUserUspPack": generate_frontend_user_usps(root, out / "frontend-user-usp-pack.json"),
         "ceoCockpit": generate_ceo_cockpit(root, findings, out / "ceo-cockpit.json", trend_db),
         "trendDashboard": trend_dashboard(evidence, trend_db),
         "recommendationLifecycle": recommendation_lifecycle(findings, state_file or (out / "recommendation-lifecycle-state.json")),
